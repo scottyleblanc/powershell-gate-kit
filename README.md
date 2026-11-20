@@ -99,3 +99,4 @@ Work is listed in [Docs/TODO.md](Docs/TODO.md), released changes in
 [Docs/VERSIONING.md](Docs/VERSIONING.md). Decisions are in
 [Docs/decisions.md](Docs/decisions.md). The kit is gated by itself: turn on the hook
 with `git config core.hooksPath .githooks`.
+# powershell-gate-kit
