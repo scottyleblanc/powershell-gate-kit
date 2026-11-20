@@ -22,7 +22,7 @@ definitions:
         name: gate
         max-time: 30
         script:
-          - apt-get update -qq && apt-get install -y -qq --no-install-recommends ca-certificates curl git > /dev/null
+          - apt-get update -qq && apt-get install -y -qq --no-install-recommends ca-certificates curl git libicu74 libssl3t64 libgssapi-krb5-2 > /dev/null
           - PWSH_VERSION=7.6.10
           - PWSH_SHA256=e261cabc91c78a9afe8d1e5f24731ab0d38204735ab2ec94b0af55102652e10d
           - curl -sSfL -o /tmp/pwsh.tar.gz "https://github.com/PowerShell/PowerShell/releases/download/v${PWSH_VERSION}/powershell-${PWSH_VERSION}-linux-x64.tar.gz"

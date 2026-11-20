@@ -33,6 +33,9 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Fixed
 
+- `Templates/bitbucket-pipelines.yml` installs `libicu74`, `libssl3t64` and
+  `libgssapi-krb5-2`. On the bare `ubuntu:24.04` image PowerShell stopped at start-up
+  with "Couldn't find a valid ICU package installed on the system".
 - GK05 scans the working tree as `.` from the repository root, so gitleaks
   fingerprints are relative paths and a fingerprint in `.gitleaksignore` matches.
   Scanning the absolute root path gave absolute fingerprints, so no `.gitleaksignore`
