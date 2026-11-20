@@ -49,11 +49,19 @@
 .PARAMETER Unit
     Also run GK11, when gate.config.psd1 turns it on.
 
+.PARAMETER Quick
+    Skip GK03, the slowest check, and report it [OFF]. The pre-push hook passes it;
+    CI does not, so every pull request is still analyzed (DEC-011).
+
 .EXAMPLE
     pwsh -NoProfile -File ./tools/gate/Scripts/Invoke-Gate.ps1
 
-    Runs the gate. Exits 0 when every check passes. This is what the pre-push hook
-    runs.
+    Runs the gate. Exits 0 when every check passes.
+
+.EXAMPLE
+    pwsh -NoProfile -File ./tools/gate/Scripts/Invoke-Gate.ps1 -Quick
+
+    Runs every check except GK03. This is what the pre-push hook runs.
 
 .EXAMPLE
     pwsh -NoProfile -File ./tools/gate/Scripts/Invoke-Gate.ps1 -Unit -Base origin/main
@@ -73,7 +81,10 @@ param(
     [string]$Base,
 
     [Parameter()]
-    [switch]$Unit
+    [switch]$Unit,
+
+    [Parameter()]
+    [switch]$Quick
 )
 
 Set-StrictMode -Version Latest
@@ -169,7 +180,10 @@ Add-Result -Id 'GK02' -Name 'tools' -Passed ($toolProblems.Count -eq 0) -Summary
 
 # -- GK03 analyzer -----------------------------------------------------------
 
-if ($null -eq $analyzerModule) {
+if ($Quick) {
+    Write-Off -Id 'GK03' -Name 'analyzer' -Reason 'skipped by -Quick; CI runs it'
+}
+elseif ($null -eq $analyzerModule) {
     Add-Result -Id 'GK03' -Name 'analyzer' -Passed $false -Summary 'not run: PSScriptAnalyzer is missing'
 }
 else {
