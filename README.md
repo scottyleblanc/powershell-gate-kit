@@ -238,7 +238,7 @@ record named in `gate.config.psd1` (default `Review/LastReview.json`).
 |---|---|
 | Version | unreleased (first tag pending) |
 | Last audit | not yet audited |
-| Tests | 82 static tests: 21 gate behaviour cases, 16 analyzer rule cases, 45 unbranded file checks |
+| Tests | 83 static tests: 22 gate behaviour cases, 16 analyzer rule cases, 45 unbranded file checks |
 | Open items | See [Docs/SECURITY.md](Docs/SECURITY.md#open-items) |
 
 ## Licence

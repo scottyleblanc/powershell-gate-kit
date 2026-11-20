@@ -5,7 +5,7 @@
 | Version | unreleased (first tag pending) |
 | Last audit | not yet audited |
 | Findings resolved | none recorded |
-| Tests | 82 static tests |
+| Tests | 83 static tests |
 
 ## 1. Secret scanning
 
