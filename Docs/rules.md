@@ -13,7 +13,7 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 |---|---|---|---|
 | GK01 | config | Always; a failure stops the gate | CF-001 to CF-005 |
 | GK02 | tools | Always | — |
-| GK03 | analyzer | Always | AN-001 to AN-009 |
+| GK03 | analyzer | Always, except with `-Quick` (the pre-push hook, DEC-011) | AN-001 to AN-009 |
 | GK04 | static | Always | ST-001 |
 | GK05 | secrets | Always | SE-001 |
 | GK06 | commits | Always | SE-002 |

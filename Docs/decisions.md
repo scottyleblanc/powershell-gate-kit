@@ -114,3 +114,20 @@ refused by some company policies), and a copyright held personally (the company 
 first have had to transfer its rights).
 
 **Enforced by:** KT-001 skips `LICENSE` and checks every other file.
+
+## DEC-011 — The pre-push hook skips the analyzer
+
+The pre-push hook runs the gate with `-Quick`, which skips GK03. CI runs the gate
+without it, so every pull request is analyzed.
+
+**Why:** GK03 is the slowest check by far on a repository of any size, and a push that
+waits minutes for it gets made with `--no-verify`, which skips the secret checks too.
+The secret checks must run before a commit leaves the machine; a new analyzer finding
+is caught at the pull request with nothing lost.
+
+The kit's own hook does not pass `-Quick`: the kit has no CI, so its hook is where GK03
+runs on the kit (DEC-006).
+
+**Rules out:** dropping the hook, and a hook that runs only gitleaks outside the gate.
+
+**Enforced by:** the gate test "is off with -Quick".

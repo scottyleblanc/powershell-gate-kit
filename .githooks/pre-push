@@ -4,7 +4,8 @@
 # Turn it on once in each clone:
 #   git config core.hooksPath .githooks
 #
-# The push is refused when any gate check fails.
+# The push is refused when any gate check fails. No -Quick: the kit has no CI, so this
+# hook is where GK03 runs on the kit (DEC-011).
 
 root="$(git rev-parse --show-toplevel)" || exit 1
 exec pwsh -NoProfile -File "$root/Scripts/Invoke-Gate.ps1"

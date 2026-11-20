@@ -112,9 +112,11 @@ mkdir -p .githooks && cp tools/gate/Templates/pre-push .githooks/pre-push
 git config core.hooksPath .githooks
 ```
 
-This copies the hook to `.githooks/pre-push`. git then runs the gate before every push
-and refuses the push when a check fails. `core.hooksPath` is a local git setting, so
-everyone who clones the target runs the `git config` line once.
+This copies the hook to `.githooks/pre-push`. git then runs the gate with `-Quick`
+before every push and refuses the push when a check fails. `-Quick` skips GK03, the
+analyzer, which is the slowest check; CI still runs it on every pull request (DEC-011).
+`core.hooksPath` is a local git setting, so everyone who clones the target runs the
+`git config` line once.
 
 ### 5. Run the gate
 
@@ -238,7 +240,7 @@ record named in `gate.config.psd1` (default `Review/LastReview.json`).
 |---|---|
 | Version | unreleased (first tag pending) |
 | Last audit | not yet audited |
-| Tests | 83 static tests: 22 gate behaviour cases, 16 analyzer rule cases, 45 unbranded file checks |
+| Tests | 84 static tests: 23 gate behaviour cases, 16 analyzer rule cases, 45 unbranded file checks |
 | Open items | See [Docs/SECURITY.md](Docs/SECURITY.md#open-items) |
 
 ## Licence

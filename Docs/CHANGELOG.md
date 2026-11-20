@@ -8,6 +8,10 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Added
 
+- `Invoke-Gate.ps1 -Quick` skips GK03 and reports it `[OFF]`. `Templates/pre-push`
+  passes it, so a push no longer waits for the analyzer; CI runs without it (DEC-011).
+  The kit's own hook keeps GK03, because the kit has no CI. A target repository refreshes its `.githooks/pre-push` from
+  the template to pick this up.
 - `LICENSE`: the MIT licence (DEC-010), and a Licence section in the README. KT-001
   skips `LICENSE`, the one file that names the copyright holder.
 

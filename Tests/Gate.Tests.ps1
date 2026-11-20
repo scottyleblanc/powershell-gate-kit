@@ -137,6 +137,20 @@ Describe 'Invoke-Gate' -Tag 'Static' {
         }
     }
 
+    Context 'GK03 analyzer with -Quick' {
+
+        It 'is off with -Quick, so a finding the baseline does not hold passes; the other checks still run' {
+            $repo = New-FixtureRepo -Name 'quick' -Config "@{ SchemaVersion = 1; Analyzer = @{ Paths = @('source') } }"
+            Set-FixtureFile -Repo $repo -Path 'source/Get-Thing.ps1' -Text "function Get-Thing { param([string]`$Name) 1..3 | ForEach-Object { `$_ } }`n"
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Quick')
+            $result.Text | Should -Match '\[OFF\]  GK03 analyzer : skipped by -Quick; CI runs it'
+            $result.Text | Should -Not -Match 'Measure-AN008UsePSItem'
+            $result.Text | Should -Match '\[PASS\] GK05 secrets'
+            $result.Text | Should -Match '\[PASS\] gate: all 7 checks passed'
+            $result.ExitCode | Should -Be 0
+        }
+    }
+
     Context 'GK05 to GK07 secrets, commits and messages' {
 
         It 'SE-001 fails a secret in the working tree' {

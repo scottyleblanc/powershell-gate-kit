@@ -6,6 +6,9 @@
 #
 # The push is refused when any gate check fails. git push --no-verify skips the hook;
 # use it only when you know why the gate is failing and the push must still happen.
+#
+# -Quick skips GK03 (the analyzer), the slowest check; CI runs it (DEC-011). Run the
+# full gate locally by calling Invoke-Gate.ps1 without -Quick.
 
 root="$(git rev-parse --show-toplevel)" || exit 1
-exec pwsh -NoProfile -File "$root/tools/gate/Scripts/Invoke-Gate.ps1"
+exec pwsh -NoProfile -File "$root/tools/gate/Scripts/Invoke-Gate.ps1" -Quick
