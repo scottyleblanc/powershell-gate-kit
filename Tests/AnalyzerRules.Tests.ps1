@@ -71,4 +71,12 @@ Describe 'Custom analyzer rules' -Tag 'Static' {
     It '<Rule> passes the corrected code' -ForEach $script:cases {
         @(Get-RuleHit -Script $Good -Rule $Rule).Count | Should -Be 0
     }
+
+    It 'Measure-AN002OutputTypeDeclared skips class methods and constructors, and still reports a function beside them' {
+        $script = 'class Thing { Thing() { } [string] Name() { return "x" } static [int] Twice([int] $a) { return $a * 2 } }' +
+            [System.Environment]::NewLine + 'function Get-Thing { param([string]$Name) $Name }'
+        $hits = @(Get-RuleHit -Script $script -Rule 'Measure-AN002OutputTypeDeclared')
+        $hits.Count | Should -Be 1
+        $hits[0].Message | Should -Match "Function 'Get-Thing'"
+    }
 }

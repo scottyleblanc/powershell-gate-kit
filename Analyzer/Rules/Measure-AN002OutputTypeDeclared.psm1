@@ -7,7 +7,9 @@ function Measure-AN002OutputTypeDeclared {
 
     .DESCRIPTION
         Reports a function whose param block has no [OutputType()] attribute, or that has
-        no param block at all. Custom PSScriptAnalyzer rule.
+        no param block at all. Class methods and constructors are skipped: their return
+        type is part of their signature, and [OutputType()] cannot be applied to them.
+        Custom PSScriptAnalyzer rule.
 
     .PARAMETER ScriptBlockAst
         The script block PSScriptAnalyzer passes in. The rule runs once per file, on the
@@ -39,7 +41,8 @@ function Measure-AN002OutputTypeDeclared {
 
     $functions = @($ScriptBlockAst.FindAll({
         param([System.Management.Automation.Language.Ast]$Node)
-        $Node -is [System.Management.Automation.Language.FunctionDefinitionAst]
+        $Node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+        $Node.Parent -isnot [System.Management.Automation.Language.FunctionMemberAst]
     }, $true))
 
     foreach ($function in $functions) {

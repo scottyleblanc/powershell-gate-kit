@@ -46,6 +46,9 @@ All notable changes to this kit are recorded here. The format follows
   entry ever matched. A test case covers it.
 - `Templates/bitbucket-pipelines.yml` runs the gate with `-Unit`, as the GitHub
   workflow does, so GK11 runs in Bitbucket CI when `Checks.Unit` is on.
+- AN-002 no longer reports class methods and constructors. `[OutputType()]` cannot be
+  applied to them, so every one was a finding that could only be baselined. A test
+  case covers it.
 
 ### Security
 
