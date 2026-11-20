@@ -149,6 +149,16 @@ Describe 'Invoke-Gate' -Tag 'Static' {
             $result.ExitCode | Should -Be 1
         }
 
+        It 'SE-001 passes a finding whose fingerprint is in .gitleaksignore' {
+            $repo  = New-FixtureRepo -Name 'ignored' -Config $script:minimal
+            $token = 'gh' + 'p_' + ('aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3z5A')
+            Set-FixtureFile -Repo $repo -Path 'notes.txt' -Text "token = $token`n"
+            Set-FixtureFile -Repo $repo -Path '.gitleaksignore' -Text "# fixture value, not a credential`nnotes.txt:github-pat:1`n"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[PASS\] GK05 secrets'
+            $result.ExitCode | Should -Be 0
+        }
+
         It 'SE-002 fails a secret in an unpushed commit that a later commit removed' {
             $repo  = New-FixtureRepo -Name 'history' -Config $script:minimal
             $token = 'gh' + 'p_' + ('aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3z5A')

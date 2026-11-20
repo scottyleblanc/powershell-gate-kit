@@ -210,8 +210,15 @@ if (-not $gitleaksReady) {
     Add-Result -Id 'GK05' -Name 'secrets' -Passed $false -Summary "not run: gitleaks $requiredGitleaks is missing"
 }
 else {
-    $out  = @(& $gitleaks.Source dir $repoRoot --config $gitleaksConfig --redact --no-banner 2>&1 | ForEach-Object { "$PSItem" })
-    $exit = $LASTEXITCODE
+    # Scanned as '.' from the root so fingerprints are relative and match .gitleaksignore (SE-001).
+    Push-Location -LiteralPath $repoRoot
+    try {
+        $out  = @(& $gitleaks.Source dir . --config $gitleaksConfig --redact --no-banner 2>&1 | ForEach-Object { "$PSItem" })
+        $exit = $LASTEXITCODE
+    }
+    finally {
+        Pop-Location
+    }
     $summary = if ($exit -eq 0) { 'no leaks in the working tree' } else { 'leaks found in the working tree' }
     Add-Result -Id 'GK05' -Name 'secrets' -Passed ($exit -eq 0) -Summary $summary -Detail @($out | Where-Object { $PSItem -match 'Finding|File|Line|RuleID|leaks found' })
 }

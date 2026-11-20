@@ -33,6 +33,10 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Fixed
 
+- GK05 scans the working tree as `.` from the repository root, so gitleaks
+  fingerprints are relative paths and a fingerprint in `.gitleaksignore` matches.
+  Scanning the absolute root path gave absolute fingerprints, so no `.gitleaksignore`
+  entry ever matched. A test case covers it.
 - `Templates/bitbucket-pipelines.yml` runs the gate with `-Unit`, as the GitHub
   workflow does, so GK11 runs in Bitbucket CI when `Checks.Unit` is on.
 

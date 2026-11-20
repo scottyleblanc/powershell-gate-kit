@@ -73,6 +73,8 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 
 - **SE-001** — gitleaks finds no secret in the working tree.
   Example: a token pasted into a notes file fails GK05 before it is committed.
+  A false positive listed in `.gitleaksignore` at the repository root, by its
+  relative-path fingerprint (`<file>:<rule>:<line>`), does not fail GK05.
 - **SE-002** — gitleaks finds no secret in any commit not yet on a remote, or, with
   `-Base`, any commit the branch adds.
   Example: a token committed and then deleted in a later commit still fails GK06.
