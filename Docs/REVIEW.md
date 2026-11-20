@@ -46,7 +46,7 @@ the checklist does not ask for that. Each kind of rule has an owner:
 | The change does what it says, and nothing else visible | The human |
 | Each finding's Response is right, and a finding that should be fixed is fixed | The human |
 | The fix commits after the reviewed commit do what their findings asked | The author; the gate and the human's reading of the Responses |
-| The gate passed in CI | The branch protection on the target branch, which blocks the merge otherwise |
+| The gate passed in CI | The branch protection on the target branch, which blocks the merge otherwise; where the host's plan cannot require a check (a private repository on GitHub Free), the human, before merging |
 
 The human checklist has two items: intent, and the findings.
 

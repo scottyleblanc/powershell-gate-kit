@@ -36,7 +36,9 @@ Then:
    the optional checks the repository needs.
 2. For CI, copy `Templates/github/gate.yml` to `.github/workflows/gate.yml`, or
    `Templates/bitbucket-pipelines.yml` to the root, and make the `gate` job a required
-   check on the target branch.
+   check on the target branch. On GitHub, a required check needs a public repository
+   or a paid plan; on GitHub Free a private repository runs the gate on every pull
+   request but cannot block the merge, so a failing check only advises.
 3. Copy `Templates/pull_request_template.md` to where the host reads it.
 4. A repository with existing analyzer findings sets `Analyzer.Baseline` and runs
    `pwsh -NoProfile -File ./tools/gate/Scripts/Update-AnalyzerBaseline.ps1` once.

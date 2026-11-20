@@ -11,9 +11,11 @@ first-class; no release is tagged with one open.
 - [x] Templates: config, hook, GitHub and Bitbucket wrappers, pull request template
 - [x] [SEC] Pinned, hash-checked tool installs for Windows and Linux
 - [x] The kit's own tests, and the kit gated by itself
-- [ ] Prove on a fresh, empty repository: `git subtree add`, the minimal config, the
+- [x] Prove on a fresh, empty repository: `git subtree add`, the minimal config, the
       gate passes; a seeded secret and a seeded analyzer finding each fail it, through
       the hook and through CI on a real pull request
+- [x] Record that GitHub Free cannot require the check on a private repository (found
+      by the fresh-repository proof)
 - [ ] Prove on a copy of an existing module repository hosted on Bitbucket: baseline
       the existing findings, the gate passes, run the Bitbucket template
 - [ ] [SEC] Pin the Bitbucket template's image by digest

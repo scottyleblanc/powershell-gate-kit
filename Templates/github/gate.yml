@@ -1,5 +1,7 @@
 # Runs the gate on every pull request. Copy to .github/workflows/gate.yml and make the
-# job 'gate' a required status check on the target branch.
+# job 'gate' a required status check on the target branch. A required check needs a
+# public repository or a paid GitHub plan; on GitHub Free a private repository runs
+# this workflow but cannot block the merge.
 #
 # Every rule lives in tools/gate/Scripts/Invoke-Gate.ps1; this file only installs the
 # pinned tools and calls it.

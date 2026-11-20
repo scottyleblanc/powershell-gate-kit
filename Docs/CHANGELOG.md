@@ -18,6 +18,12 @@ All notable changes to this kit are recorded here. The format follows
 - `Docs/rules.md`, `Docs/decisions.md` (DEC-001 to DEC-009), `Docs/REVIEW.md`.
 - The kit's own tests: gate behaviour, analyzer rules, unbranded files (KT-001).
 
+### Changed
+
+- The README, `Docs/REVIEW.md` and the GitHub template state that a required check
+  needs a public repository or a paid GitHub plan; on GitHub Free a private
+  repository's gate only advises, and the human confirms it passed before merging.
+
 ### Security
 
 - gitleaks and PowerShell downloads checked against pinned SHA-256 hashes.
