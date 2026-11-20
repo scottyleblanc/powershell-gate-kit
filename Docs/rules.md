@@ -123,5 +123,5 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 These hold for the kit's own files and are checked by the kit's own tests.
 
 - **KT-001** — The kit carries no owner branding, copyright line or rule IDs from
-  another repository's rule set.
+  another repository's rule set, except the copyright line in `LICENSE` (DEC-010).
   Example: `Tests/Unbranded.Tests.ps1` fails on a company name in a comment.

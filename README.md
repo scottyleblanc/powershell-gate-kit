@@ -241,6 +241,13 @@ record named in `gate.config.psd1` (default `Review/LastReview.json`).
 | Tests | 82 static tests: 21 gate behaviour cases, 16 analyzer rule cases, 45 unbranded file checks |
 | Open items | See [Docs/SECURITY.md](Docs/SECURITY.md#open-items) |
 
+## Licence
+
+MIT; see [LICENSE](LICENSE). Anyone may use, change and redistribute the kit. It is
+provided as is, without warranty, and the authors and the copyright holder accept no
+liability for its use. `LICENSE` travels into `tools/gate/LICENSE` in every target and
+must stay there.
+
 ## Contributing
 
 This section is for work on the kit itself, in its own repository, where paths have no

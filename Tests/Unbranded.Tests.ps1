@@ -6,10 +6,13 @@
 #
 # The patterns are built with character classes so that this file does not contain the
 # words it looks for.
+#
+# LICENSE is the one exception (DEC-010): it names the copyright holder, and is the only
+# file that may.
 
 BeforeDiscovery {
     $kitRoot = Split-Path -Path $PSScriptRoot -Parent
-    $script:files = @(& git -C $kitRoot ls-files --cached --others --exclude-standard | ForEach-Object {
+    $script:files = @(& git -C $kitRoot ls-files --cached --others --exclude-standard | Where-Object { $PSItem -ne 'LICENSE' } | ForEach-Object {
             @{ Relative = $PSItem; Full = Join-Path -Path $kitRoot -ChildPath $PSItem }
         })
 }

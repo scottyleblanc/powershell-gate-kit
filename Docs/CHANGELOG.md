@@ -8,6 +8,9 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Added
 
+- `LICENSE`: the MIT licence (DEC-010), and a Licence section in the README. KT-001
+  skips `LICENSE`, the one file that names the copyright holder.
+
 - `Scripts/Invoke-Gate.ps1`: checks GK01 to GK11, configured by `gate.config.psd1`.
 - `Scripts/Install-GateTool.ps1` for Windows x64 and Linux x64.
 - `Scripts/Invoke-ModelReview.ps1`, `Scripts/Update-AnalyzerBaseline.ps1`,

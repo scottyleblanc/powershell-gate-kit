@@ -9,18 +9,18 @@ A repository takes the kit with
 `git subtree add --prefix=tools/gate <kit-remote> main --squash` and updates it with
 `git subtree pull`.
 
-**Why:** the kit's repository is private, and the people and CI runners of a target
-repository may not reach it. A subtree copies the files into the target, so nothing
-outside the target is needed to run the gate. `--squash` keeps the kit's history out
+**Why:** the people and CI runners of a target repository may not be able to reach
+the kit's repository. A subtree copies the files into the target, so nothing outside
+the target is needed to run the gate. `--squash` keeps the kit's history out
 of the target's history.
 
 **Rules out:** git submodules, and a package feed.
 
 ## DEC-002 — Unbranded
 
-The kit holds no owner name, copyright line or licence file, and no rule IDs or
-decision numbers from another repository. Commit messages in the kit follow the same
-rule, because a squashed subtree commit lists them.
+The kit holds no owner name or copyright line, and no rule IDs or decision numbers
+from another repository. Commit messages in the kit follow the same rule, because a
+squashed subtree commit lists them. The one exception is `LICENSE` (DEC-010).
 
 **Why:** the kit is copied into repositories owned by others.
 
@@ -97,3 +97,20 @@ not reviewed again.
 
 **Why:** each new review is a fresh session that finds a different subset of problems
 and never settles; the cost of re-reviewing every fix is unbounded.
+
+## DEC-010 — MIT licence, held by the owner of the code it came from
+
+The kit is released under the MIT licence in `LICENSE`, with the copyright held by
+the company that owns the code the kit was derived from. `LICENSE` is the only file
+that names the holder; every other file stays unbranded (DEC-002).
+
+**Why:** the kit is public, and anyone may use, change and redistribute it. MIT allows
+that, disclaims warranty and liability for the authors and the holder, and is the
+licence most often accepted by company policies on open-source code. The kit was
+derived from code that company owns, so the company is the party able to release it.
+
+**Rules out:** a public-domain dedication (not clearly recognised everywhere, and
+refused by some company policies), and a copyright held personally (the company would
+first have had to transfer its rights).
+
+**Enforced by:** KT-001 skips `LICENSE` and checks every other file.
