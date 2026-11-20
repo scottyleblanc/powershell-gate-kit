@@ -23,6 +23,15 @@ All notable changes to this kit are recorded here. The format follows
 - The README, `Docs/REVIEW.md` and the GitHub template state that a required check
   needs a public repository or a paid GitHub plan; on GitHub Free a private
   repository's gate only advises, and the human confirms it passed before merging.
+- README installation rewritten for a first-time reader: one numbered step per task,
+  each saying what it does; the tool install and the permanent `PATH` entry for
+  gitleaks; a worked `Analyzer.Paths` example and the `Checks` table; every path given
+  in full, relative to the target's root folder.
+
+### Fixed
+
+- `Templates/bitbucket-pipelines.yml` runs the gate with `-Unit`, as the GitHub
+  workflow does, so GK11 runs in Bitbucket CI when `Checks.Unit` is on.
 
 ### Security
 
