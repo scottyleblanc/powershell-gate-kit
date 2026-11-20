@@ -1,0 +1,24 @@
+# Changelog
+
+All notable changes to this kit are recorded here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and the kit uses
+[Semantic Versioning](https://semver.org/) (`Docs/VERSIONING.md`).
+
+## [Unreleased]
+
+### Added
+
+- `Scripts/Invoke-Gate.ps1`: checks GK01 to GK11, configured by `gate.config.psd1`.
+- `Scripts/Install-GateTool.ps1` for Windows x64 and Linux x64.
+- `Scripts/Invoke-ModelReview.ps1`, `Scripts/Update-AnalyzerBaseline.ps1`,
+  `Scripts/Invoke-StaticTest.ps1`.
+- Custom analyzer rules AN-002 to AN-009.
+- Templates: config, pre-push hook, GitHub Actions and Bitbucket Pipelines wrappers,
+  pull request template, gitleaks config, message patterns, agent permissions.
+- `Docs/rules.md`, `Docs/decisions.md` (DEC-001 to DEC-009), `Docs/REVIEW.md`.
+- The kit's own tests: gate behaviour, analyzer rules, unbranded files (KT-001).
+
+### Security
+
+- gitleaks and PowerShell downloads checked against pinned SHA-256 hashes.
+- Agent permission files checked against their documented rules (PM-001, PM-002).

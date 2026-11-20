@@ -1,0 +1,127 @@
+# Rules
+
+Every rule the gate enforces, with the check that enforces it. A rule is one sentence
+and one example. IDs are never reused: a retired rule keeps its ID and is marked
+retired.
+
+IDs: checks are `GKnn`, in the order the gate runs them; rules are a two-letter area
+and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
+
+## Checks
+
+| Check | Name | Runs | Rules |
+|---|---|---|---|
+| GK01 | config | Always; a failure stops the gate | CF-001 to CF-005 |
+| GK02 | tools | Always | — |
+| GK03 | analyzer | Always | AN-001 to AN-009 |
+| GK04 | static | Always | ST-001 |
+| GK05 | secrets | Always | SE-001 |
+| GK06 | commits | Always | SE-002 |
+| GK07 | messages | Always | CM-001 |
+| GK08 | permissions | Always | PM-001, PM-002 |
+| GK09 | version | When `Checks.Version` is on | VR-001; VR-002 with `-Base` |
+| GK10 | review | When `Checks.Review` is on (the default), with `-Base` | RV-001 |
+| GK11 | unit | When `Checks.Unit` is on, with `-Unit` | UT-001 |
+
+## Config (GK01)
+
+- **CF-001** — The repository root holds `gate.config.psd1`, a PowerShell data file.
+  Example: a missing file fails GK01 and no other check runs.
+- **CF-002** — The config states `SchemaVersion = 1`.
+  Example: `@{ SchemaVersion = 1 }` is the smallest valid config.
+- **CF-003** — The config holds only the keys in `Templates/gate.config.psd1`, each of
+  the right shape.
+  Example: a misspelt `Analyser` key fails rather than being ignored.
+- **CF-004** — Every path in the config is relative, uses `/`, stays inside the
+  repository, and names a file or folder that exists.
+  Example: `StaticTests = '../shared-tests'` fails.
+- **CF-005** — An optional check that is turned on has the settings it needs.
+  Example: `Checks.Unit = $true` with no `Unit.Script` fails.
+
+## Analyzer (GK03)
+
+- **AN-001** — PSScriptAnalyzer reports no finding in the analyzed folders beyond the
+  counts in the repository's baseline.
+  Example: a baseline that holds two `PSAvoidUsingWriteHost` findings for a file fails
+  on the third.
+- **AN-002** — Every function declares its output type.
+  Example: `[OutputType([PSCustomObject])]` below `[CmdletBinding()]`.
+- **AN-003** — Platform is detected with `$IsWindows`, `$IsLinux` or `$IsMacOS`, never
+  from the `OS` environment variable.
+  Example: `if ($IsLinux) { ... }`, not `if ($env:OS -eq 'Windows_NT') { ... }`.
+- **AN-004** — Every parameter has an explicit type.
+  Example: `[string]$Name`, never `$Name`.
+- **AN-005** — A call never continues a line with a backtick.
+  Example: `$params = @{ Path = $path; Encoding = 'UTF8' }` then `Set-Content @params`.
+- **AN-006** — Paths are built with `Join-Path`, never by joining strings with `\` or
+  `/`.
+  Example: `Join-Path -Path $root -ChildPath 'bin'`, not `"$root\bin"`.
+- **AN-007** — Every file write names its encoding.
+  Example: `Set-Content -Path $path -Value $text -Encoding UTF8`.
+- **AN-008** — The current pipeline item is written `$PSItem`, never `$_`.
+  Example: `ForEach-Object { $PSItem.Name }`.
+- **AN-009** — No emoji in code, scripts or output; status uses a `[LABEL]` prefix.
+  Example: `Write-Output '[INFO] done'`.
+
+## Static tests (GK04)
+
+- **ST-001** — Every Pester test in the repository's static test folder passes, and
+  every test file runs.
+  Example: a test file with a parse error fails GK04, not only a failing `It`.
+
+## Secrets (GK05, GK06)
+
+- **SE-001** — gitleaks finds no secret in the working tree.
+  Example: a token pasted into a notes file fails GK05 before it is committed.
+- **SE-002** — gitleaks finds no secret in any commit not yet on a remote, or, with
+  `-Base`, any commit the branch adds.
+  Example: a token committed and then deleted in a later commit still fails GK06.
+
+## Commit messages (GK07)
+
+- **CM-001** — No commit message holds a secret or a value that matches the
+  repository's message patterns.
+  Example: a commit message that quotes a local user-profile path fails.
+
+## Agent permissions (GK08)
+
+- **PM-001** — Each documented agent settings file keeps every documented deny rule,
+  holds no allow rule or setting beyond the documented ones.
+  Example: removing `Bash(git push *)` from the deny list fails until the permissions
+  file changes in the same diff.
+- **PM-002** — Every committed agent settings file is documented.
+  Example: committing `.claude/settings.json` with no entry in the permissions file
+  fails.
+
+## Version (GK09)
+
+- **VR-001** — The manifest's `ModuleVersion`, the newest CHANGELOG release and each
+  listed `Version :` line name the same version.
+  Example: `ModuleVersion = '1.2.0'` with `## [1.1.0]` newest in the CHANGELOG fails.
+- **VR-002** — With `-Base`: the version is not lower than the latest tag, and a
+  version already tagged is in the branch's history with no package input changed
+  since the base.
+  Example: a change under `source/` while the version is still the tagged `1.2.0`
+  fails until the version is bumped.
+
+## Review (GK10)
+
+- **RV-001** — A branch that changes any file other than the review record and the
+  exempt files carries a record of a completed second-model review of a commit it
+  adds, from its merge base or an older one, with every finding answered `Fixed:`,
+  `Rejected:`, `Accepted:` or `Deferred:`.
+  Example: a record left by an earlier pull request fails, because its commit is
+  already in the base.
+
+## Unit tests (GK11)
+
+- **UT-001** — The repository's unit test script exits 0.
+  Example: the script owns its tests and coverage floor; the gate reads its exit code.
+
+## The kit itself
+
+These hold for the kit's own files and are checked by the kit's own tests.
+
+- **KT-001** — The kit carries no owner branding, copyright line or rule IDs from
+  another repository's rule set.
+  Example: `Tests/Unbranded.Tests.ps1` fails on a company name in a comment.
