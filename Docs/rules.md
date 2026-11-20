@@ -44,7 +44,8 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
   counts in the repository's baseline.
   Example: a baseline that holds two `PSAvoidUsingWriteHost` findings for a file fails
   on the third.
-- **AN-002** — Every function declares its output type.
+- **AN-002** — Every function declares its output type. Class methods and constructors
+  are exempt: their return type is in their signature.
   Example: `[OutputType([PSCustomObject])]` below `[CmdletBinding()]`.
 - **AN-003** — Platform is detected with `$IsWindows`, `$IsLinux` or `$IsMacOS`, never
   from the `OS` environment variable.
