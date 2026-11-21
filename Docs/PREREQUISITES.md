@@ -52,13 +52,11 @@ The gate behaviour tests take about a minute and a half.
 | Platform | Status |
 |---|---|
 | Windows x64 | Supported: the kit's tests pass on Windows 11 |
-| Linux x64 | Expected: `Install-GateTool.ps1` and the Bitbucket template target it; not yet run |
+| Linux x64 | Supported: `Install-GateTool.ps1` and the Bitbucket template, with `-Unit`, run on hosted Bitbucket runners (`ubuntu:24.04`, a module repository's pull requests, 2026-11-21) |
 | macOS | Untested; `Install-GateTool.ps1` refuses it (no gitleaks hash pinned) |
 
 ## Known limitations
 
-- The Linux path (`Install-GateTool.ps1` on Linux, `Templates/bitbucket-pipelines.yml`)
-  has not run yet.
 - Only x64 gitleaks hashes are pinned.
 - GK11 trusts the unit script's exit code; it does not check what the script ran.
   `Invoke-EvidenceRun.ps1` trusts the evidence script's exit code the same way.

@@ -4,8 +4,9 @@
 # Every rule lives in tools/gate/Scripts/Invoke-Gate.ps1; this file only installs
 # PowerShell and the pinned tools and calls it.
 #
-# Hosted Pipelines runners are Linux. A repository whose unit tests need Windows runs
-# this on a self-hosted Windows runner, or leaves -Unit out here.
+# Hosted Pipelines runners are Linux. A repository whose unit tests need Windows tags
+# them and excludes the tag off Windows (Docs/RUNBOOK.md ADOPT-14), runs this on a
+# self-hosted Windows runner, or leaves -Unit out here.
 #
 # [SEC] PowerShell is the release tarball, checked against a pinned SHA-256 before it
 # is unpacked; Install-GateTool.ps1 does the same for gitleaks. No repository variable
@@ -30,11 +31,18 @@ definitions:
           - mkdir -p /opt/pwsh && tar -xzf /tmp/pwsh.tar.gz -C /opt/pwsh && chmod +x /opt/pwsh/pwsh && rm /tmp/pwsh.tar.gz
           # The clone may hold only the source branch: fetch the target for -Base.
           - git fetch --quiet origin "+refs/heads/${BITBUCKET_PR_DESTINATION_BRANCH}:refs/remotes/origin/${BITBUCKET_PR_DESTINATION_BRANCH}"
+          # Unit tests: install what the suite needs here, and set the variables Windows
+          # always sets that the code reads (ADOPT-14), for example:
+          # - export TEMP=/tmp COMPUTERNAME="$(hostname)"
           - >-
             /opt/pwsh/pwsh -NoProfile -Command
             "& ./tools/gate/Scripts/Install-GateTool.ps1 -Destination /tmp/gate-tools;
             & ./tools/gate/Scripts/Invoke-Gate.ps1 -Unit -Base origin/${BITBUCKET_PR_DESTINATION_BRANCH} -Timestamp;
             exit \$LASTEXITCODE"
+        # A JUnit report the unit script writes to test-results/: kept as an artifact and
+        # shown in the Tests tab, also when a test fails.
+        artifacts:
+          - test-results/**
 
 pipelines:
   pull-requests:
