@@ -5,11 +5,12 @@
     Runs every check in one command: the gate.
 
 .DESCRIPTION
-    Reads gate.config.psd1 at the repository root, runs each check in turn, reports
-    [PASS], [FAIL] or [OFF] for each, and exits 1 if any check failed. Every check runs
-    even after an earlier one fails, so one run shows every problem. The one exception
-    is GK01: a config that fails its check stops the gate, because no other check can
-    be trusted to read it. The rules each check enforces are in Docs\rules.md.
+    Reads gate.config.psd1 at the repository root or in Gate/, runs each check in
+    turn, reports [PASS], [FAIL] or [OFF] for each, and exits 1 if any check failed.
+    Every check runs even after an earlier one fails, so one run shows every problem.
+    The one exception is GK01: a config that fails its check stops the gate, because no
+    other check can be trusted to read it. The rules each check enforces are in
+    Docs\rules.md.
 
       GK01 config       gate.config.psd1 is present and valid (CF-001 to CF-005)
       GK02 tools        PSScriptAnalyzer 1.25.0, gitleaks 8.30.1, Pester 5 and git
@@ -244,6 +245,10 @@ else {
 
 $gitleaksReady  = $null -ne $gitleaks -and $gitleaksVersion -eq $requiredGitleaks
 $gitleaksConfig = if ($config.Gitleaks) { Resolve-GatePath -RepoRoot $repoRoot -RelativePath $config.Gitleaks } else { Join-Path -Path $kitRoot -ChildPath 'Config' -AdditionalChildPath 'gitleaks.toml' }
+# The ignore file GitleaksIgnore names, else the root folder, where gitleaks looks for
+# .gitleaksignore. Passed to every call, so GK06 and GK07 read it whatever folder the
+# gate runs from (SE-001, DEC-018).
+$gitleaksIgnore = if ($config.GitleaksIgnore) { Resolve-GatePath -RepoRoot $repoRoot -RelativePath $config.GitleaksIgnore } else { $repoRoot }
 
 if (-not $gitleaksReady) {
     Add-Result -Id 'GK05' -Name 'secrets' -Passed $false -Summary "not run: gitleaks $requiredGitleaks is missing"
@@ -252,7 +257,7 @@ else {
     # Scanned as '.' from the root so fingerprints are relative and match .gitleaksignore (SE-001).
     Push-Location -LiteralPath $repoRoot
     try {
-        $out  = @(& $gitleaks.Source dir . --config $gitleaksConfig --redact --no-banner 2>&1 | ForEach-Object { "$PSItem" })
+        $out  = @(& $gitleaks.Source dir . --config $gitleaksConfig --gitleaks-ignore-path $gitleaksIgnore --redact --no-banner 2>&1 | ForEach-Object { "$PSItem" })
         $exit = $LASTEXITCODE
     }
     finally {
@@ -301,7 +306,7 @@ else {
         Add-Result -Id 'GK06' -Name 'commits' -Passed $false -Summary "not run: gitleaks $requiredGitleaks is missing"
     }
     else {
-        $out  = @(& $gitleaks.Source git $repoRoot --config $gitleaksConfig --redact --no-banner --log-opts ($rangeArgs -join ' ') 2>&1 | ForEach-Object { "$PSItem" })
+        $out  = @(& $gitleaks.Source git $repoRoot --config $gitleaksConfig --gitleaks-ignore-path $gitleaksIgnore --redact --no-banner --log-opts ($rangeArgs -join ' ') 2>&1 | ForEach-Object { "$PSItem" })
         $exit = $LASTEXITCODE
         $summary = if ($exit -eq 0) { "no leaks in $($unpushed.Count) $rangeLabel" } else { "leaks found in $rangeLabel" }
         Add-Result -Id 'GK06' -Name 'commits' -Passed ($exit -eq 0) -Summary $summary -Detail @($out | Where-Object { $PSItem -match 'Finding|File|Commit|RuleID|leaks found' })
@@ -323,7 +328,7 @@ else {
         }
 
         if ($gitleaksReady) {
-            $null = $message | & $gitleaks.Source stdin --config $gitleaksConfig --redact --no-banner 2>&1
+            $null = $message | & $gitleaks.Source stdin --config $gitleaksConfig --gitleaks-ignore-path $gitleaksIgnore --redact --no-banner 2>&1
             if ($LASTEXITCODE -ne 0) { $problems.Add("commit ${short}: gitleaks found a secret in the message") }
         }
     }
