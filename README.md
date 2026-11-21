@@ -79,7 +79,9 @@ six characters. Each other script writes one file named in `gate.config.psd1`:
 `Invoke-ModelReview.ps1` the review record (default `Review/LastReview.json`),
 `Invoke-EvidenceRun.ps1` the evidence record (default `Evidence/LastRun.json`, which
 holds no host name, user name or outside path), and `Export-AgentInstruction.ps1` the
-agent instruction file (default `AGENTS.md`).
+agent instruction file (default `AGENTS.md`). With the config in `Gate/`, the two
+records default to `Gate/Review/LastReview.json` and `Gate/Evidence/LastRun.json`
+(DEC-023).
 
 With `-Timestamp`, which the CI templates pass, every line the gate prints starts with
 the UTC time and each `[PASS]` and `[FAIL]` line ends with that check's duration:

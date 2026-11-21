@@ -280,6 +280,9 @@ it.
 **Enforced by:** the gate tests under "GK01 config" and "GK05 to GK07 secrets, commits
 and messages".
 
+**Amended by:** DEC-023, which moves the default review and evidence records under
+`Gate/` when the config is there.
+
 ## DEC-019 — Registry changes are blocked in the code and in the agent's commands
 
 AN-018 fails code that changes the Windows registry, and the agent templates deny the
@@ -368,3 +371,27 @@ address in full.
 address no CommitEmails pattern allows, and passes one that is allowed" and "CM-002 is
 off while CommitEmails is empty, and CF-003 fails a pattern that is not a valid
 regular expression".
+
+## DEC-023 — The records' default location follows the config
+
+When `gate.config.psd1` is read from `Gate/`, `Review.Record` defaults to
+`Gate/Review/LastReview.json` and `Evidence.Record` to `Gate/Evidence/LastRun.json`.
+A config at the root keeps `Review/LastReview.json` and `Evidence/LastRun.json`. A
+`Record` the config sets wins in either place. Amends DEC-018.
+
+**Why:** a repository that keeps its gate files in `Gate/` would otherwise get two
+more top-level folders from the records, or have to set both keys to keep them in
+`Gate/`. The default follows the config, not a fixed `Gate/` path, because a
+repository with its config at the root has no `Gate/` folder; the kit itself is one,
+and its `Review/` folder already holds the reviewer prompt.
+
+**Rules out:** one fixed default for every repository; searching both places for a
+record.
+
+**Breaks:** a repository with its config in `Gate/` that leaves `Review.Record` or
+`Evidence.Record` unset reads the record from the new path, so GK10 or GK12 fails
+until the record is moved there or the key names the old path.
+
+**Enforced by:** the gate tests "RV-001 reads the record from Gate/Review/ when the
+config is in Gate/, unless Review.Record names another" and "EV-001 writes and reads
+the record under Gate/Evidence/ when the config is in Gate/".

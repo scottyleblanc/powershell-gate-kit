@@ -448,6 +448,36 @@ Describe 'Invoke-Gate' -Tag 'Static' {
             $result.Text | Should -Match '\[PASS\] GK10 review'
             $result.ExitCode | Should -Be 0
         }
+
+        It 'RV-001 reads the record from Gate/Review/ when the config is in Gate/, unless Review.Record names another' {
+            $repo = New-FixtureRepo -Name 'reviewgate' -NoConfig
+            Set-FixtureFile -Repo $repo -Path 'Gate/gate.config.psd1' -Text $script:minimal
+            Set-FixtureFile -Repo $repo -Path 'readme.txt' -Text "one`n"
+            $main = Save-FixtureCommit -Repo $repo -Message 'first'
+            $null = Invoke-FixtureGit -Repo $repo -Argument @('switch', '--quiet', '-c', 'feature')
+            Set-FixtureFile -Repo $repo -Path 'readme.txt' -Text "two`n"
+            $change = Save-FixtureCommit -Repo $repo -Message 'change the readme'
+
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Base', 'main')
+            $result.Text | Should -Match 'Gate/Review/LastReview.json is not in HEAD'
+
+            $record = [ordered]@{
+                SchemaVersion = 1
+                Commit        = $change
+                BaseCommit    = $main
+                Completed     = $true
+                Findings      = @([ordered]@{ Id = 'F1'; Severity = 'Low'; Response = 'Accepted: a test record' })
+            }
+            Set-FixtureFile -Repo $repo -Path 'Gate/Review/LastReview.json' -Text (ConvertTo-Json -InputObject $record -Depth 4)
+            $null   = Save-FixtureCommit -Repo $repo -Message 'record the review'
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Base', 'main')
+            $result.Text | Should -Match '\[PASS\] GK10 review'
+            $result.ExitCode | Should -Be 0
+
+            Set-FixtureFile -Repo $repo -Path 'Gate/gate.config.psd1' -Text "@{ SchemaVersion = 1; Review = @{ Record = 'Review/LastReview.json' } }"
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Base', 'main')
+            $result.Text | Should -Match '(?<!Gate/)Review/LastReview.json is not in HEAD'
+        }
     }
 
     Context 'GK11 unit' {
@@ -538,6 +568,23 @@ Describe 'Invoke-Gate' -Tag 'Static' {
             $run = Invoke-FixtureEvidence -Repo $dirty
             $run.Text | Should -Match 'uncommitted change'
             $run.ExitCode | Should -Be 1
+        }
+
+        It 'EV-001 writes and reads the record under Gate/Evidence/ when the config is in Gate/' {
+            $repo = New-FixtureRepo -Name 'evgate' -NoConfig
+            Set-FixtureFile -Repo $repo -Path 'Gate/gate.config.psd1' -Text $script:evidenceConfig
+            Set-FixtureFile -Repo $repo -Path 'scripts/Invoke-IntegrationTest.ps1' -Text "Write-Output 'integration ran'`nexit 0`n"
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.ps1' -Text "# one`n"
+            $null = Save-FixtureCommit -Repo $repo -Message 'first'
+            $null = Invoke-FixtureGit -Repo $repo -Argument @('switch', '--quiet', '-c', 'feature')
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.ps1' -Text "# two`n"
+            $null = Save-FixtureCommit -Repo $repo -Message 'change the source'
+            (Invoke-FixtureEvidence -Repo $repo).ExitCode | Should -Be 0
+            Join-Path -Path $repo -ChildPath 'Gate' -AdditionalChildPath 'Evidence', 'LastRun.json' | Should -Exist
+            $null   = Save-FixtureCommit -Repo $repo -Message 'record the evidence'
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Base', 'main')
+            $result.Text | Should -Match '\[PASS\] GK12 evidence : Evidence.Paths changed; Gate/Evidence/LastRun.json is current'
+            $result.ExitCode | Should -Be 0
         }
 
         It 'CF-005 fails Checks.Evidence on with no script or paths' {

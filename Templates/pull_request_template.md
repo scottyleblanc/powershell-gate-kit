@@ -4,7 +4,8 @@
 
 ## Second-model review
 
-<!-- From the review record (default Review/LastReview.json). Gate check GK10 fails if
+<!-- From the review record (Review.Record; by default Gate/Review/LastReview.json
+with the config in Gate/, Review/LastReview.json at the root). Gate check GK10 fails if
 the record is missing, does not cover the branch, or has an unanswered finding. -->
 
 - Reviewed commit:
