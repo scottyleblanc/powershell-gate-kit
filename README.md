@@ -106,8 +106,9 @@ are on, and a check that is off prints `[OFF]`.
 | `Version` | GK09 | The module version is the same in the manifest, the newest CHANGELOG release and the listed notes files | off | The target is a module with a CHANGELOG | `Version.Manifest`, `Version.Changelog` |
 | `Unit` | GK11 | Runs the target's unit test script when the gate is run with `-Unit` | off | The target has a script that runs its tests and exits 0 only when they pass | `Unit.Script` |
 
-The other keys (`StaticTests`, `Gitleaks`, `MessagePatterns`, `Permissions`) can stay
-`''`, which uses the kit's defaults or turns the check's extra input off.
+`Permissions` is set in step 7. The other keys (`StaticTests`, `Gitleaks`,
+`MessagePatterns`) can stay `''`, which uses the kit's defaults or turns the check's
+extra input off.
 
 ### 4. Turn on the pre-push hook
 
@@ -147,7 +148,28 @@ then on GK03 fails only when a file has more findings for a rule than the baseli
 holds, so old findings can be fixed over time and new ones cannot be added. Commit the
 baseline file.
 
-### 7. Run the gate in CI
+### 7. Limit what AI agents may do (when the target is worked on with Claude Code)
+
+```sh
+mkdir -p .claude gate
+cp tools/gate/Templates/claude-settings.json .claude/settings.json
+cp tools/gate/Templates/agent-permissions.psd1 gate/agent-permissions.psd1
+```
+
+Then, in `gate.config.psd1`, set `Permissions = 'gate/agent-permissions.psd1'`.
+
+`.claude/settings.json` is the Claude Code settings file for the target. As copied,
+it allows the agent to run the gate and the read-only git commands (`status`, `diff`,
+`log`, `show`) without asking. It denies `git push`, `rm` and `rmdir`, and reading
+`~/.aws`, `~/.ssh` and the Claude Code credentials file.
+
+`gate/agent-permissions.psd1` records which rules that settings file may hold. GK08
+fails when the settings file drops a deny rule, or adds an allow rule or setting the
+record does not list (PM-001). It also fails when an agent settings file is committed
+with no entry in the record (PM-002). To allow the agent more, change both files in
+the same pull request, so the change shows in review.
+
+### 8. Run the gate in CI
 
 - **GitHub:** copy `tools/gate/Templates/github/gate.yml` to
   `.github/workflows/gate.yml`.
@@ -160,18 +182,19 @@ branch protection rule or ruleset on GitHub, a merge check on Bitbucket. On GitH
 this needs a public repository or a paid plan; on GitHub Free a private repository
 runs the gate but cannot block the merge, so a failing check only advises.
 
-### 8. Add the pull request template
+### 9. Add the pull request template
 
 On GitHub, copy `tools/gate/Templates/pull_request_template.md` to
 `.github/pull_request_template.md`; GitHub then fills every new pull request with its
 checklist. On Bitbucket, use the text of
 `tools/gate/Templates/pull_request_template.md` as the pull request description.
 
-### 9. Commit and push
+### 10. Commit and push
 
 Commit `gate.config.psd1`, `.githooks/pre-push`, the CI file
 (`.github/workflows/gate.yml` or `bitbucket-pipelines.yml`),
-`.github/pull_request_template.md` and any baseline file, then push. The hook runs
+`.github/pull_request_template.md`, any baseline file, and the two files from step 7
+if you used it, then push. The hook runs
 the gate on that push.
 
 ### For each pull request

@@ -292,9 +292,10 @@ function Invoke-GateAnalyzer {
             } | Sort-Object -Property FullName -Unique)
     }
 
-    # Folder prefixes ('scripts/') and the rules not reported under each.
+    # Folder prefixes ('scripts/') and the rules not reported under each. A prefix is
+    # text compared with a relative path, not a path, so it is not built with Join-Path.
     $byPath = @(foreach ($folder in @($Config.Analyzer.ExcludeRulesByPath.Keys)) {
-            [PSCustomObject]@{ Prefix = ([string]$folder).Trim('/') + '/'; Rules = [string[]]@($Config.Analyzer.ExcludeRulesByPath[$folder]) }
+            [PSCustomObject]@{ Prefix = '{0}/' -f ([string]$folder).Trim('/'); Rules = [string[]]@($Config.Analyzer.ExcludeRulesByPath[$folder]) }
         })
 
     $findings = @(foreach ($file in $files) {
