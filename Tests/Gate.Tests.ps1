@@ -137,6 +137,32 @@ Describe 'Invoke-Gate' -Tag 'Static' {
         }
     }
 
+    Context 'GK03 analyzer with ExcludeRulesByPath' {
+
+        It 'drops a listed rule under its folder only, and keeps the other rules there' {
+            $config = "@{ SchemaVersion = 1; Analyzer = @{ Paths = @('source', 'scripts'); ExcludeRulesByPath = @{ 'scripts' = @('Measure-AN008UsePSItem') } } }"
+            $repo   = New-FixtureRepo -Name 'bypath' -Config $config
+            $text   = "function Get-Thing { [OutputType([int])] param([int]`$N) 1..`$N | ForEach-Object { `$_ } }`n"
+            Set-FixtureFile -Repo $repo -Path 'source/Get-Thing.ps1' -Text $text
+            Set-FixtureFile -Repo $repo -Path 'scripts/Get-Thing.ps1' -Text ($text + "if (`$env:OS) { 1 }`n")
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'source/Get-Thing.ps1:\d+ Measure-AN008UsePSItem'
+            $result.Text | Should -Not -Match 'scripts/Get-Thing.ps1:\d+ Measure-AN008UsePSItem'
+            $result.Text | Should -Match 'scripts/Get-Thing.ps1:\d+ Measure-AN003PlatformFromAutomaticVariable'
+            $result.ExitCode | Should -Be 1
+        }
+
+        It 'CF-004 fails a folder that does not exist, and CF-003 an entry with no rule names' {
+            $config = "@{ SchemaVersion = 1; Analyzer = @{ ExcludeRulesByPath = @{ 'missing' = @('PSAvoidUsingWriteHost'); 'source' = @() } } }"
+            $repo   = New-FixtureRepo -Name 'bypathbad' -Config $config
+            Set-FixtureFile -Repo $repo -Path 'source/Get-Thing.ps1' -Text "1`n"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match "Analyzer.ExcludeRulesByPath names 'missing', which is not a folder in the repository \(CF-004\)"
+            $result.Text | Should -Match "Analyzer.ExcludeRulesByPath 'source' must list one or more rule names \(CF-003\)"
+            $result.ExitCode | Should -Be 1
+        }
+    }
+
     Context 'GK03 analyzer with -Quick' {
 
         It 'is off with -Quick, so a finding the baseline does not hold passes; the other checks still run' {

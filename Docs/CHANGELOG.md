@@ -8,6 +8,9 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Added
 
+- `Analyzer.ExcludeRulesByPath` in `gate.config.psd1` turns analyzer rules off under
+  one folder, for example `@{ 'scripts' = @('PSAvoidUsingWriteHost') }` (DEC-012). GK01
+  checks each folder exists (CF-004) and lists at least one rule name (CF-003).
 - `Invoke-Gate.ps1 -Quick` skips GK03 and reports it `[OFF]`. `Templates/pre-push`
   passes it, so a push no longer waits for the analyzer; CI runs without it (DEC-011).
   The kit's own hook keeps GK03, because the kit has no CI. A target repository refreshes its `.githooks/pre-push` from

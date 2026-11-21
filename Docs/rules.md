@@ -43,7 +43,8 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 - **AN-001** — PSScriptAnalyzer reports no finding in the analyzed folders beyond the
   counts in the repository's baseline.
   Example: a baseline that holds two `PSAvoidUsingWriteHost` findings for a file fails
-  on the third.
+  on the third. A rule that `Analyzer.ExcludeRulesByPath` lists for a folder is not
+  reported for files under that folder (DEC-012).
 - **AN-002** — Every function declares its output type. Class methods and constructors
   are exempt: their return type is in their signature.
   Example: `[OutputType([PSCustomObject])]` below `[CmdletBinding()]`.

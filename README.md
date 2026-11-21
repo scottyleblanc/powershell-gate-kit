@@ -74,12 +74,16 @@ scripts in `scripts/`:
 
 ```powershell
 Analyzer = @{
-    Paths        = @('source', 'scripts')
-    Exclude      = @('*.Tests.ps1')
-    ExcludeRules = @()
-    Baseline     = ''
+    Paths              = @('source', 'scripts')
+    Exclude            = @('*.Tests.ps1')
+    ExcludeRules       = @()
+    ExcludeRulesByPath = @{ 'scripts' = @('PSAvoidUsingWriteHost') }   # console output is a script's job
+    Baseline           = ''
 }
 ```
+
+`ExcludeRulesByPath` turns a rule off under one folder and keeps it everywhere else
+(DEC-012).
 
 **Which optional checks run.** The core checks GK01 to GK08 always run. The `Checks`
 table at the top of `gate.config.psd1` turns the other three on (`$true`) or off
@@ -240,7 +244,7 @@ record named in `gate.config.psd1` (default `Review/LastReview.json`).
 |---|---|
 | Version | unreleased (first tag pending) |
 | Last audit | not yet audited |
-| Tests | 85 static tests: 23 gate behaviour cases, 17 analyzer rule cases, 45 unbranded file checks |
+| Tests | 87 static tests: 25 gate behaviour cases, 17 analyzer rule cases, 45 unbranded file checks |
 | Open items | See [Docs/SECURITY.md](Docs/SECURITY.md#open-items) |
 
 ## Licence

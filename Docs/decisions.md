@@ -131,3 +131,20 @@ runs on the kit (DEC-006).
 **Rules out:** dropping the hook, and a hook that runs only gitleaks outside the gate.
 
 **Enforced by:** the gate test "is off with -Quick".
+
+## DEC-012 — Analyzer rules can be turned off for one folder
+
+`Analyzer.ExcludeRulesByPath` maps a folder to rule names; GK03 and
+`Update-AnalyzerBaseline.ps1` drop those rules' findings for files under the folder and
+keep them everywhere else. Each entry says why beside it, as `ExcludeRules` does.
+
+**Why:** some rules are wrong for one kind of file only. `PSAvoidUsingWriteHost` is
+right for module code and wrong for operator scripts, whose console output is their
+job. `ExcludeRules` would lose the rule for the module too, a suppression in every
+script repeats one decision dozens of times, and a baseline fails each new console
+line.
+
+**Rules out:** per-file globs and wildcard rule names; a folder is the unit a repository
+already organizes by.
+
+**Enforced by:** the gate tests under "GK03 analyzer with ExcludeRulesByPath".
