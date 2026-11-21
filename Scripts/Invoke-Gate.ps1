@@ -22,7 +22,9 @@
       GK06 commits      gitleaks over every commit not yet on a remote (SE-002)
       GK07 messages     The messages of those commits, through gitleaks and the
                         message patterns. gitleaks does not read commit messages, so
-                        they are checked separately (CM-001)
+                        they are checked separately (CM-001). When CommitEmails is
+                        set, each commit's author and committer address must match
+                        one of its patterns (CM-002)
       GK08 permissions  The committed agent permission files match the documented
                         rules (PM-001, PM-002)
       GK09 version      Optional. The manifest, the newest CHANGELOG release and every
@@ -357,9 +359,21 @@ else {
     $patterns    = @((Import-PowerShellDataFile -LiteralPath $patternFile).Patterns)
     $problems    = [System.Collections.Generic.List[string]]::new()
 
+    $allowedEmails = @($config.CommitEmails | Where-Object { $PSItem })
+
     foreach ($commit in $unpushed) {
         $short   = $commit.Substring(0, 7)
         $message = (& $git.Source -C $repoRoot log -1 --format=%B $commit) -join "`n"
+
+        # CM-002: the addresses a commit carries are the ones the repository allows.
+        if ($allowedEmails.Count -gt 0) {
+            $people = @(& $git.Source -C $repoRoot log -1 '--format=%ae%n%ce' $commit)
+            foreach ($role in @(@('author', $people[0]), @('committer', $people[1]))) {
+                $address = [string]$role[1]
+                if (@($allowedEmails | Where-Object { $address -match $PSItem }).Count -gt 0) { continue }
+                $problems.Add("commit ${short}: CM-002 $($role[0]) address is not in CommitEmails: $(Get-Prefix -Value $address)")
+            }
+        }
 
         foreach ($pattern in $patterns) {
             foreach ($match in [regex]::Matches($message, $pattern.Pattern)) {

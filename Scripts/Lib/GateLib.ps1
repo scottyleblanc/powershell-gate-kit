@@ -27,6 +27,7 @@ $script:GateConfigDefault = [ordered]@{
     Gitleaks        = ''
     GitleaksIgnore  = ''
     MessagePatterns = ''
+    CommitEmails    = @()
     Permissions     = ''
     Review          = [ordered]@{ Record = 'Review/LastReview.json'; Exempt = @() }
     Version         = [ordered]@{ Manifest = ''; Changelog = ''; NotesFiles = @(); TagPrefix = 'v'; PackageInputs = @() }
@@ -208,6 +209,16 @@ function Import-GateConfig {
 
     foreach ($name in @($config.Checks.Keys)) {
         if ($config.Checks[$name] -isnot [bool]) { $problems.Add("gate.config.psd1: Checks.$name must be `$true or `$false (CF-003)") }
+    }
+
+    # CommitEmails: regular expressions an author or committer address must match (CM-002).
+    foreach ($pattern in @($config.CommitEmails)) {
+        if ($pattern -isnot [string] -or -not $pattern) {
+            $problems.Add('gate.config.psd1: CommitEmails must list non-empty strings (CF-003)')
+            continue
+        }
+        try { $null = [regex]::new($pattern) }
+        catch { $problems.Add("gate.config.psd1: CommitEmails entry '$pattern' is not a valid regular expression (CF-003)") }
     }
 
     foreach ($id in @($config.Quick)) {

@@ -8,6 +8,10 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Added
 
+- The `CommitEmails` config key lists regular expressions a commit's author and
+  committer address must each match. GK07 fails a commit in its range that matches
+  none, in the pre-push hook and in CI (CM-002, DEC-022). Empty, the default, leaves
+  the check off. The kit's own config allows only GitHub no-reply addresses.
 - `Invoke-Gate.ps1 -Timestamp` starts every line the gate prints with the UTC time
   (`yyyy-MM-ddTHH:mm:ssZ`) and ends each `[PASS]` and `[FAIL]` line with how long that
   check took. `Templates/github/gate.yml`, `Templates/bitbucket-pipelines.yml` and the
@@ -140,7 +144,9 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Security
 
-- `Templates/claude-settings.json` and `Templates/agent-permissions.psd1` deny the
+- GK07 can refuse a commit carrying an address the repository does not allow
+  (CM-002), so a clone with the wrong git identity cannot push a personal or work
+  address into a public history.- `Templates/claude-settings.json` and `Templates/agent-permissions.psd1` deny the
   agent's own registry changes: `reg` with a changing verb, `regedit`, and the
   changing PowerShell cmdlets on `HK*:` and `Registry::` paths. A target repository
   copies both templates again, or adds the rules to its own files, to pick them up.

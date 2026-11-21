@@ -344,3 +344,27 @@ static and unit test scripts, which it matches from the start of each line; loca
 time.
 
 **Enforced by:** the gate tests under "Output with -Timestamp".
+
+## DEC-022 — Commit addresses are checked against an allow list
+
+`CommitEmails` lists regular expressions. When it holds any, GK07 checks the author
+and the committer address of every commit in its range, and fails a commit when
+either matches none of them (CM-002). It is empty by default.
+
+**Why:** a commit's address is published with the history, and a history that has
+been pushed can be corrected only by rewriting it, which changes every later commit
+and leaves the old commits reachable through pull requests. git picks the address
+from whichever config applies, so a new clone, another machine or a global default
+can carry the wrong one without anyone noticing. Checking it in GK07 stops it in the
+pre-push hook, before it leaves the machine, and again in CI. An allow list, not a
+deny list, is what keeps an unforeseen address out. Both addresses are checked
+because a rebase or a merge on the web sets the committer apart from the author.
+
+**Rules out:** a default allow list in the kit (the right addresses differ by
+repository); checking commits already on a remote outside `-Base`; printing a refused
+address in full.
+
+**Enforced by:** the gate tests "CM-002 fails a commit whose author or committer
+address no CommitEmails pattern allows, and passes one that is allowed" and "CM-002 is
+off while CommitEmails is empty, and CF-003 fails a pattern that is not a valid
+regular expression".

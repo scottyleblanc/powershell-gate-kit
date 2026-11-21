@@ -17,7 +17,7 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 | GK04 | static | Always, except with `-Quick` while `Quick` lists it | ST-001 |
 | GK05 | secrets | Always | SE-001 |
 | GK06 | commits | Always | SE-002 |
-| GK07 | messages | Always | CM-001 |
+| GK07 | messages | Always | CM-001; CM-002 when `CommitEmails` is set |
 | GK08 | permissions | Always | PM-001, PM-002 |
 | GK09 | version | When `Checks.Version` is on; not with `-Quick` while `Quick` lists it | VR-001; VR-002 with `-Base` |
 | GK10 | review | When `Checks.Review` is on (the default), with `-Base` | RV-001 |
@@ -137,6 +137,11 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 - **CM-001** — No commit message holds a secret or a value that matches the
   repository's message patterns.
   Example: a commit message that quotes a local user-profile path fails.
+- **CM-002** — When `CommitEmails` lists any patterns, every commit in the range has
+  an author address and a committer address that each match one of them (DEC-022).
+  Example: with `CommitEmails = @('@users\.noreply\.github\.com$')`, a commit made
+  in a clone that still has a work address as its git email fails the push. The
+  address is shown by its first six characters only.
 
 ## Agent permissions (GK08)
 

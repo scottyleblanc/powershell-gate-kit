@@ -92,7 +92,7 @@ The pre-push hook does not pass it (DEC-021).
 |---|---|
 | Version | unreleased (first tag pending) |
 | Last audit | not yet audited |
-| Tests | 205 static tests: 48 gate behaviour cases, 98 analyzer rule cases, 59 unbranded file checks |
+| Tests | 207 static tests: 50 gate behaviour cases, 98 analyzer rule cases, 59 unbranded file checks |
 | Open items | See [Docs/SECURITY.md](Docs/SECURITY.md#open-items) |
 
 ## Licence

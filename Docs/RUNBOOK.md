@@ -115,7 +115,7 @@ How to add the gate to a repository that already has code, and how to keep it wo
    | `Files` | GK15 | Fails when a tracked file, or an untracked one git does not ignore, holds a value that matches the message patterns, the same patterns GK07 applies to commit messages | off | The repository is public, or will be, and its patterns name values that must not appear in it | `MessagePatterns` with this repository's own entries; `Files.Exclude` for fixtures |
 
 4. For a gitleaks config of your own, copy `tools/gate/Templates/gitleaks.toml` to `Gate/gitleaks.toml` and set `Gitleaks = 'Gate/gitleaks.toml'`.  For a gitleaks ignore file in `Gate/`, set `GitleaksIgnore = 'Gate/gitleaksignore'`; left `''`, gitleaks reads `.gitleaksignore` at the root.  Fingerprints in it stay relative to the root.
-5. Leave `StaticTests`, `MessagePatterns` and `Permissions` as `''` for now; ADOPT-9 and ADOPT-10 set the first and last.
+5. Leave `StaticTests`, `MessagePatterns` and `Permissions` as `''` for now; ADOPT-9 and ADOPT-10 set the first and last.  Set `CommitEmails` to the address patterns commits may carry, for example GitHub no-reply addresses only, when a repository is public or the wrong git identity must not reach it (CM-002); empty leaves the check off.
 
 **Verify:** `pwsh -NoProfile -File ./tools/gate/Scripts/Invoke-Gate.ps1 -Quick` prints `[PASS] GK01 config`, and the GK01 line lists the optional checks that are on.
 **If this fails:** GK01 names the key and the rule (CF-001 to CF-005, [rules.md](rules.md)); no other check runs until it passes.

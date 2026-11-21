@@ -285,6 +285,37 @@ Describe 'Invoke-Gate' -Tag 'Static' {
             $result.Text | Should -Match 'no private key block'
             $result.ExitCode | Should -Be 1
         }
+
+        It 'CM-002 fails a commit whose author or committer address no CommitEmails pattern allows, and passes one that is allowed' {
+            # The fixture commits as gate-test@example.com.
+            $repo = New-FixtureRepo -Name 'emails' -Config "@{ SchemaVersion = 1; CommitEmails = @('@users\.noreply\.github\.com$') }"
+            Set-FixtureFile -Repo $repo -Path 'readme.txt' -Text "hello`n"
+            $null = Save-FixtureCommit -Repo $repo -Message 'add readme'
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[FAIL\] GK07 messages'
+            $result.Text | Should -Match 'CM-002 author address is not in CommitEmails: gate-t\*\*\*'
+            $result.Text | Should -Match 'CM-002 committer address is not in CommitEmails: gate-t\*\*\*'
+            $result.Text | Should -Not -Match 'gate-test@example\.com'
+            $result.ExitCode | Should -Be 1
+
+            Set-FixtureFile -Repo $repo -Path 'gate.config.psd1' -Text "@{ SchemaVersion = 1; CommitEmails = @('@users\.noreply\.github\.com$', '^gate-test@example\.com$') }"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[PASS\] GK07 messages'
+            $result.Text | Should -Not -Match 'CM-002'
+        }
+
+        It 'CM-002 is off while CommitEmails is empty, and CF-003 fails a pattern that is not a valid regular expression' {
+            $repo = New-FixtureRepo -Name 'emailsoff' -Config $script:minimal
+            Set-FixtureFile -Repo $repo -Path 'readme.txt' -Text "hello`n"
+            $null = Save-FixtureCommit -Repo $repo -Message 'add readme'
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[PASS\] GK07 messages'
+
+            Set-FixtureFile -Repo $repo -Path 'gate.config.psd1' -Text "@{ SchemaVersion = 1; CommitEmails = @('[unclosed') }"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match "CommitEmails entry '\[unclosed' is not a valid regular expression \(CF-003\)"
+            $result.ExitCode | Should -Be 1
+        }
     }
 
     Context 'GK08 permissions' {

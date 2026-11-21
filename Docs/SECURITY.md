@@ -5,7 +5,7 @@
 | Version | unreleased (first tag pending) |
 | Last audit | not yet audited |
 | Findings resolved | none recorded |
-| Tests | 205 static tests |
+| Tests | 207 static tests |
 
 ## 1. Secret scanning
 
@@ -15,9 +15,12 @@
 the commits a branch adds, with `-Base`), and every one of those commit messages
 through `gitleaks stdin`. The messages are also matched against the message patterns.
 With `Checks.Files` on, GK15 matches the same patterns against every file git tracks
-or would track, outside `Files.Exclude`.
+or would track, outside `Files.Exclude`. With `CommitEmails` set, GK07 also refuses
+a commit whose author or committer address matches none of its patterns (CM-002), so
+a personal or work address cannot reach the remote through a clone with the wrong
+git identity.
 **Contract:** a found value is never printed in full: gitleaks runs with `--redact`,
-and a pattern match shows its first six characters only.
+and a pattern match or a refused address shows its first six characters only.
 
 ## 2. Pinned, hash-checked tools
 
