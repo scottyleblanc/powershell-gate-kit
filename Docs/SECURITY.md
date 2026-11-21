@@ -61,7 +61,7 @@ run commands or write files.
 
 ## 6. CI least privilege
 
-**Status:** implemented (`Templates/github/gate.yml`).
+**Status:** implemented (`Templates/github/gate.yml`, and the kit's own `.github/workflows/gate.yml`, built from it).
 **How:** a read-only token, the `pull_request` trigger only, no secrets, credentials not
 kept in the checkout, and the one action pinned to a full commit SHA.
 
