@@ -18,6 +18,9 @@ first-class; no release is tagged with one open.
       by the fresh-repository proof)
 - [x] Optional checks GK12 evidence, GK13 package and GK14 instructions, with tests
       (DEC-013)
+- [x] Custom analyzer rules AN-010 to AN-013 (DEC-014) and AN-014 to AN-016 (DEC-015),
+      with tests
+- [x] Analyzer rule AN-017 (DEC-016) and the optional file scan GK15 (DEC-017), with tests
 - [ ] Prove on a copy of an existing module repository hosted on Bitbucket: baseline
       the existing findings, the gate passes, run the Bitbucket template
 - [ ] [SEC] Pin the Bitbucket template's image by digest
@@ -27,5 +30,4 @@ first-class; no release is tagged with one open.
 
 ## Later
 
-- A message-pattern check over committed files as well as commit messages.
 - A cross-check against a private list of identifiers, kept outside the repository.

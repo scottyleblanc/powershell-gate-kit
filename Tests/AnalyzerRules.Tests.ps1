@@ -1,6 +1,6 @@
 #Requires -Version 7.6
 
-# Rules AN-002 to AN-013: each custom analyzer rule reports its defect and stays quiet
+# Rules AN-002 to AN-017: each custom analyzer rule reports its defect and stays quiet
 # on the corrected code. A rule that never fires would let GK03 pass anything.
 
 BeforeDiscovery {
@@ -83,6 +83,21 @@ function Get-Thing {
 }
 '@
         }
+        @{
+            Rule = 'Measure-AN014WhatIfDecided'
+            Bad  = 'function Remove-Thing { [CmdletBinding(SupportsShouldProcess)] param([string]$Path) Remove-Item -Path $Path }'
+            Good = 'function Remove-Thing { [CmdletBinding(SupportsShouldProcess)] param([string]$Path) if ($PSCmdlet.ShouldProcess($Path, "Remove")) { Remove-Item -Path $Path } }'
+        }
+        @{
+            Rule = 'Measure-AN016RequiresVersion'
+            Bad  = 'Write-Output "x"'
+            Good = "#Requires -Version 7.6`nWrite-Output 'x'"
+        }
+        @{
+            Rule = 'Measure-AN017VerboseLabelled'
+            Bad  = 'function Get-Thing { [CmdletBinding()] param() Write-Verbose "Reading." }'
+            Good = 'function Get-Thing { [CmdletBinding()] param() Write-Verbose "[Get-Thing] Reading." }'
+        }
     )
 }
 
@@ -95,6 +110,18 @@ BeforeAll {
         $params = @{
             ScriptDefinition = $Script
             CustomRulePath   = $script:rulesPath
+        }
+        @(Invoke-ScriptAnalyzer @params | Where-Object { $PSItem.RuleName -eq $Rule })
+    }
+
+    function Get-FileRuleHit {
+        param([string]$RelativePath, [string]$Script, [string]$Rule)
+        $path = Join-Path -Path $TestDrive -ChildPath $RelativePath
+        $null = New-Item -Path (Split-Path -Path $path -Parent) -ItemType Directory -Force
+        Set-Content -Path $path -Value $Script -Encoding UTF8
+        $params = @{
+            Path           = $path
+            CustomRulePath = $script:rulesPath
         }
         @(Invoke-ScriptAnalyzer @params | Where-Object { $PSItem.RuleName -eq $Rule })
     }
@@ -170,5 +197,75 @@ Describe 'Custom analyzer rules' -Tag 'Static' {
         $hits.Count | Should -Be 1
         $hits[0].Message | Should -Match 'no \.PARAMETER for Name'
         $hits[0].Message | Should -Match 'names no parameter: OLD'
+    }
+
+    It 'Measure-AN014WhatIfDecided skips a command that does not support ShouldProcess' -ForEach @(
+        @{ Binding = '[CmdletBinding()]' }
+        @{ Binding = '[CmdletBinding(SupportsShouldProcess = $false)]' }
+    ) {
+        $script = "function Remove-Thing { $Binding param([string]`$Path) Remove-Item -Path `$Path }"
+        @(Get-RuleHit -Script $script -Rule 'Measure-AN014WhatIfDecided').Count | Should -Be 0
+    }
+
+    It 'Measure-AN014WhatIfDecided accepts <Name>' -ForEach @(
+        @{ Name = 'an early return when ShouldProcess declines'; Body = 'if (-not $PSCmdlet.ShouldProcess($Path, "Remove")) { return } Remove-Item -Path $Path' }
+        @{ Name = 'a gate held in a variable'; Body = '$go = $PSCmdlet.ShouldProcess($Path, "Remove"); if ($go) { Remove-Item -Path $Path }' }
+        @{ Name = 'an explicit -WhatIf:$false'; Body = 'New-Item -Path $Path -ItemType Directory -WhatIf:$false' }
+        @{ Name = 'a call to a function'; Body = 'Remove-OtherThing -Path $Path' }
+    ) {
+        $script = "function Remove-Thing { [CmdletBinding(SupportsShouldProcess)] param([string]`$Path) $Body }"
+        @(Get-RuleHit -Script $script -Rule 'Measure-AN014WhatIfDecided').Count | Should -Be 0
+    }
+
+    It 'Measure-AN014WhatIfDecided reports a call outside the gate and not the one inside it' {
+        $script = 'function Remove-Thing { [CmdletBinding(SupportsShouldProcess)] param([string]$Path) if ($PSCmdlet.ShouldProcess($Path, "Remove")) { Remove-Item -Path $Path } Set-Content -Path $Path -Value "x" -Encoding UTF8 }'
+        $hits = @(Get-RuleHit -Script $script -Rule 'Measure-AN014WhatIfDecided')
+        $hits.Count | Should -Be 1
+        $hits[0].Message | Should -Match "'Set-Content'"
+    }
+
+    It 'Measure-AN015PublicParameterValidated reports an unvalidated parameter in a Public folder' {
+        $script = 'function Get-Thing { [CmdletBinding()] param([string]$Name) $Name }'
+        $hits = @(Get-FileRuleHit -RelativePath 'src/Public/Get-Thing.ps1' -Script $script -Rule 'Measure-AN015PublicParameterValidated')
+        $hits.Count | Should -Be 1
+        $hits[0].Message | Should -Match "'Name' of 'Get-Thing'"
+    }
+
+    It 'Measure-AN015PublicParameterValidated passes validated, switch and credential parameters' {
+        $script = 'function Get-Thing { [CmdletBinding()] param([ValidateNotNullOrEmpty()][string]$Name, [switch]$Force, [securestring]$Password, [pscredential]$Credential) $Name }'
+        @(Get-FileRuleHit -RelativePath 'src/Public/Get-Thing.ps1' -Script $script -Rule 'Measure-AN015PublicParameterValidated').Count | Should -Be 0
+    }
+
+    It 'Measure-AN015PublicParameterValidated skips a file outside a Public folder' {
+        $script = 'function Get-Thing { [CmdletBinding()] param([string]$Name) $Name }'
+        @(Get-FileRuleHit -RelativePath 'src/Private/Get-Thing.ps1' -Script $script -Rule 'Measure-AN015PublicParameterValidated').Count | Should -Be 0
+    }
+
+    It 'Measure-AN016RequiresVersion skips a .psd1 data file and reports a .ps1 file' {
+        @(Get-FileRuleHit -RelativePath 'data/Settings.psd1' -Script '@{ Name = "x" }' -Rule 'Measure-AN016RequiresVersion').Count | Should -Be 0
+        @(Get-FileRuleHit -RelativePath 'data/Run.ps1' -Script 'Write-Output "x"' -Rule 'Measure-AN016RequiresVersion').Count | Should -Be 1
+    }
+
+    It 'Measure-AN017VerboseLabelled accepts <Name>' -ForEach @(
+        @{ Name = 'the -Message parameter'; Body = 'Write-Verbose -Message "[Get-Thing] Reading $Path."' }
+        @{ Name = 'a -f expression'; Body = 'Write-Verbose ("[Get-Thing] Reading {0}." -f $Path)' }
+        @{ Name = 'a message held in a variable'; Body = '$text = "Reading."; Write-Verbose $text' }
+        @{ Name = 'the outer name in a nested helper'; Body = 'function Read-Inner { Write-Verbose "[Get-Thing] Inner." } Read-Inner' }
+        @{ Name = 'the inner name in a nested helper'; Body = 'function Read-Inner { Write-Verbose "[Read-Inner] Inner." } Read-Inner' }
+    ) {
+        $script = "function Get-Thing { [CmdletBinding()] param([string]`$Path) $Body }"
+        @(Get-RuleHit -Script $script -Rule 'Measure-AN017VerboseLabelled').Count | Should -Be 0
+    }
+
+    It 'Measure-AN017VerboseLabelled reports a wrong label and names the expected one' {
+        $script = 'function Get-Thing { [CmdletBinding()] param() Write-Verbose -Message "[Get-Other] Reading." }'
+        $hits = @(Get-RuleHit -Script $script -Rule 'Measure-AN017VerboseLabelled')
+        $hits.Count | Should -Be 1
+        $hits[0].Message | Should -Match '\[Get-Thing\]'
+    }
+
+    It 'Measure-AN017VerboseLabelled uses the script name outside every function' {
+        @(Get-FileRuleHit -RelativePath 'scripts/Invoke-Build.ps1' -Script 'Write-Verbose "[Invoke-Build] Starting."' -Rule 'Measure-AN017VerboseLabelled').Count | Should -Be 0
+        @(Get-FileRuleHit -RelativePath 'scripts/Invoke-Other.ps1' -Script 'Write-Verbose "Starting."' -Rule 'Measure-AN017VerboseLabelled').Count | Should -Be 1
     }
 }
