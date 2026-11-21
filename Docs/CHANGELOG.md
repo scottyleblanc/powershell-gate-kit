@@ -15,6 +15,9 @@ All notable changes to this kit are recorded here. The format follows
 - `Templates/bitbucket-pipelines.yml` keeps `test-results/**` as an artifact, so a
   unit script's JUnit report shows in the Tests tab, also when a test fails, and marks
   where a target installs what its unit tests need.
+- The kit commits its own agent settings, `.claude/settings.json`, and their record,
+  `agent-permissions.psd1`, both the templates with the kit's own gate path. The kit's
+  config names the record under `Permissions`, so GK08 checks them (DEC-024).
 - The `CommitEmails` config key lists regular expressions a commit's author and
   committer address must each match. GK07 fails a commit in its range that matches
   none, in the pre-push hook and in CI (CM-002, DEC-022). Empty, the default, leaves

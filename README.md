@@ -94,7 +94,7 @@ The pre-push hook does not pass it (DEC-021).
 |---|---|
 | Version | unreleased (first tag pending) |
 | Last audit | not yet audited |
-| Tests | 207 static tests: 50 gate behaviour cases, 98 analyzer rule cases, 59 unbranded file checks |
+| Tests | 211 static tests: 52 gate behaviour cases, 98 analyzer rule cases, 61 unbranded file checks |
 | Open items | See [Docs/SECURITY.md](Docs/SECURITY.md#open-items) |
 
 ## Licence
@@ -112,3 +112,5 @@ in [Docs/CHANGELOG.md](Docs/CHANGELOG.md), and commit and version rules in
 [Docs/VERSIONING.md](Docs/VERSIONING.md). Decisions are in
 [Docs/decisions.md](Docs/decisions.md). The kit is gated by itself, configured by its
 own `gate.config.psd1`: turn on the hook with `git config core.hooksPath .githooks`.
+The kit's committed `.claude/settings.json` applies the agent templates to work on the
+kit itself, so an agent cannot `git push`; push branches yourself.
