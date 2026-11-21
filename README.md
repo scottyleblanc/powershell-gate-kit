@@ -3,14 +3,19 @@
 ## Overview
 
 A gate for PowerShell repositories: one command that runs every check a change must
-pass before it is pushed or merged. It runs PSScriptAnalyzer with nine house rules,
-the repository's static tests, gitleaks over the working tree, the unpushed commits and
-their messages, a check of committed AI-agent permission files, and a check that the
-branch carries an answered second-model review. Optional checks hold one version
-number everywhere, run the unit tests, require a recorded run of tests CI cannot run,
-check that a module package ships only the files its manifest lists, and keep the AI
-agent instruction file in step with the standards it is built from. The same command runs in the pre-push hook
-and in CI, so a change that fails locally also fails the pull request.
+pass before it is pushed or merged. It runs PSScriptAnalyzer with the built-in rules
+and 17 custom ones, the repository's static tests, gitleaks over the working tree, the
+unpushed commits and their messages, a check of committed AI-agent permission files,
+and, on a pull request, a check that the branch carries an answered second-model
+review. Optional checks hold one version number everywhere, run the unit tests,
+require a recorded run of tests CI cannot run, check that a module package ships only
+the files its manifest lists, keep the AI agent instruction file in step with the
+standards it is built from, and scan every file for values the message patterns
+forbid.
+
+The pre-push hook runs the same command with `-Quick`, which skips the slow checks the
+config lists, such as the analyzer; the secret checks always run there. CI runs every
+check on each pull request, so nothing is skipped before a merge.
 
 A repository takes the kit as a git subtree in its `tools/gate/` folder and configures
 it with one data file, `gate.config.psd1`, in its root folder or in `Gate/`.
@@ -82,7 +87,7 @@ agent instruction file (default `AGENTS.md`).
 |---|---|
 | Version | unreleased (first tag pending) |
 | Last audit | not yet audited |
-| Tests | 190 static tests: 46 gate behaviour cases, 77 analyzer rule cases, 67 unbranded file checks |
+| Tests | 203 static tests: 46 gate behaviour cases, 98 analyzer rule cases, 59 unbranded file checks |
 | Open items | See [Docs/SECURITY.md](Docs/SECURITY.md#open-items) |
 
 ## Licence
