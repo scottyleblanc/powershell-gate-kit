@@ -88,7 +88,7 @@ Analyzer = @{
 (DEC-012).
 
 **Which optional checks run.** The core checks GK01 to GK08 always run. The `Checks`
-table at the top of `gate.config.psd1` turns the other six on (`$true`) or off
+table at the top of `gate.config.psd1` turns the other seven on (`$true`) or off
 (`$false`). As copied from `tools/gate/Templates/gate.config.psd1`:
 
 ```powershell
@@ -99,6 +99,7 @@ Checks = @{
     Evidence     = $false   # GK12, with -Base: a recorded run of tests CI cannot run
     Package      = $false   # GK13, with -Base: the module package holds only its FileList
     Instructions = $false   # GK14: AGENTS.md matches the standards it is built from
+    Files        = $false   # GK15: no file holds a value the message patterns match
 }
 ```
 
@@ -113,6 +114,7 @@ are on, and a check that is off prints `[OFF]`.
 | `Evidence` | GK12 | On a pull request that changes a path in `Evidence.Paths`, requires a committed record of a passing run of `Evidence.Script`, on a clean tree, with no later change but the records | off | The target has tests CI cannot run, such as integration tests against a local database | `Evidence.Script`, `Evidence.Paths` |
 | `Package` | GK13 | On a pull request, builds the module package in a temporary folder and fails unless it holds exactly the files the manifest's `FileList` names | off | The target is a module published to a gallery | `Package.Manifest`; `Package.Build` if the module is built first |
 | `Instructions` | GK14 | Fails unless `AGENTS.md` is what `tools/gate/Scripts/Export-AgentInstruction.ps1` builds from the standards files | off | The target keeps its coding standards in Markdown files and wants AI agents to read them | `Instructions.Sources` |
+| `Files` | GK15 | Fails when a tracked file, or an untracked one git does not ignore, holds a value that matches the message patterns, the same patterns GK07 applies to commit messages | off | The repository is public, or will be, and its patterns name values that must not appear in it | `MessagePatterns` with this repository's own entries; `Files.Exclude` for fixtures |
 
 `Permissions` is set in step 7. The other keys (`StaticTests`, `Gitleaks`,
 `MessagePatterns`) can stay `''`, which uses the kit's defaults or turns the check's
@@ -250,7 +252,7 @@ Paths as they are in a target.
 
 | Script | What it does |
 |---|---|
-| `tools/gate/Scripts/Invoke-Gate.ps1` | Runs the checks GK01 to GK14; exits 0 when all pass |
+| `tools/gate/Scripts/Invoke-Gate.ps1` | Runs the checks GK01 to GK15; exits 0 when all pass |
 | `tools/gate/Scripts/Install-GateTool.ps1` | Installs the pinned tool versions; gitleaks is hash-checked |
 | `tools/gate/Scripts/Invoke-ModelReview.ps1` | Runs the second-model review once and writes the review record |
 | `tools/gate/Scripts/Update-AnalyzerBaseline.ps1` | Records the current analyzer findings as the baseline |
@@ -298,7 +300,7 @@ agent instruction file (default `AGENTS.md`).
 |---|---|
 | Version | unreleased (first tag pending) |
 | Last audit | not yet audited |
-| Tests | 124 static tests: 36 gate behaviour cases, 36 analyzer rule cases, 52 unbranded file checks |
+| Tests | 155 static tests: 39 gate behaviour cases, 60 analyzer rule cases, 56 unbranded file checks |
 | Open items | See [Docs/SECURITY.md](Docs/SECURITY.md#open-items) |
 
 ## Licence

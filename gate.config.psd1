@@ -8,6 +8,7 @@
         Review  = $true
         Version = $false
         Unit    = $false
+        Files   = $true
     }
 
     Analyzer = @{

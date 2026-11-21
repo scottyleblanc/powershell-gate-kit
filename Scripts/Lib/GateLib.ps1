@@ -21,7 +21,7 @@ $ErrorActionPreference = 'Stop'
 # the default; a key not listed here fails CF-003.
 $script:GateConfigDefault = [ordered]@{
     SchemaVersion   = 1
-    Checks          = [ordered]@{ Review = $true; Version = $false; Unit = $false; Evidence = $false; Package = $false; Instructions = $false }
+    Checks          = [ordered]@{ Review = $true; Version = $false; Unit = $false; Evidence = $false; Package = $false; Instructions = $false; Files = $false }
     Analyzer        = [ordered]@{ Paths = @(); Exclude = @('*.Tests.ps1'); ExcludeRules = @(); ExcludeRulesByPath = @{}; Baseline = '' }
     StaticTests     = ''
     Gitleaks        = ''
@@ -33,6 +33,7 @@ $script:GateConfigDefault = [ordered]@{
     Evidence        = [ordered]@{ Script = ''; Record = 'Evidence/LastRun.json'; Paths = @() }
     Package         = [ordered]@{ Manifest = ''; Build = '' }
     Instructions    = [ordered]@{ Output = 'AGENTS.md'; Title = 'Agent instructions'; Sources = @() }
+    Files           = [ordered]@{ Exclude = @() }
 }
 
 function Get-GateRepoRoot {
@@ -270,6 +271,9 @@ function Import-GateConfig {
         else { $resolveOnly.Add([string]$config.Instructions.Output) }
         if ($config.Instructions.Title -isnot [string] -or -not $config.Instructions.Title) { $problems.Add('gate.config.psd1: Instructions.Title must be a non-empty string (CF-005)') }
     }
+    if ($config.Checks.Files) {
+        foreach ($path in @($config.Files.Exclude)) { if ($path) { $resolveOnly.Add([string]$path) } }
+    }
 
     foreach ($entry in $mustExist) {
         try {
@@ -472,7 +476,7 @@ function Select-GateChangedPath {
     .OUTPUTS
         System.String. Each changed path that an input covers.
     .NOTES
-        Used by GK09 (package inputs) and GK12 (evidence paths).
+        Used by GK09 (package inputs), GK12 (evidence paths) and GK15 (excluded files).
     #>
     [CmdletBinding()]
     [OutputType([string])]

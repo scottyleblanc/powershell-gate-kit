@@ -13,7 +13,7 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 |---|---|---|---|
 | GK01 | config | Always; a failure stops the gate | CF-001 to CF-005 |
 | GK02 | tools | Always | — |
-| GK03 | analyzer | Always, except with `-Quick` (the pre-push hook, DEC-011) | AN-001 to AN-013 |
+| GK03 | analyzer | Always, except with `-Quick` (the pre-push hook, DEC-011) | AN-001 to AN-017 |
 | GK04 | static | Always | ST-001 |
 | GK05 | secrets | Always | SE-001 |
 | GK06 | commits | Always | SE-002 |
@@ -25,6 +25,7 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 | GK12 | evidence | When `Checks.Evidence` is on, with `-Base` | EV-001 |
 | GK13 | package | When `Checks.Package` is on, with `-Base` | PK-001 |
 | GK14 | instructions | When `Checks.Instructions` is on | AG-001 |
+| GK15 | files | When `Checks.Files` is on | FP-001 |
 
 ## Config (GK01)
 
@@ -82,6 +83,23 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
   parameter entry for each parameter and no other, with the same exemption.
   Example: help that `Get-Help` cannot read fails, such as a prose line that starts
   with `.properties`, or script help on the line directly below `#Requires`.
+- **AN-014** — In a script or function that declares `SupportsShouldProcess`, every
+  call to a cmdlet that accepts `-WhatIf` sits inside `if ($PSCmdlet.ShouldProcess(...))`,
+  follows an early return when `ShouldProcess` declines, or passes `-WhatIf` itself.
+  Without one of these, a caller's `-WhatIf` silently skips the call (DEC-015).
+  Example: `New-Item -Path $dir -ItemType Directory -WhatIf:$false` for work that
+  must happen even during a preview.
+- **AN-015** — Every parameter of a function in a file under a `Public` folder has a
+  `[Validate*]` attribute, except switches, `[SecureString]` and `[PSCredential]`
+  (DEC-015).
+  Example: `[ValidateNotNullOrEmpty()] [string]$Name`.
+- **AN-016** — Every `.ps1` and `.psm1` file has a `#Requires -Version` statement;
+  any version passes (DEC-015).
+  Example: `#Requires -Version 7.6` on the first line.
+- **AN-017** — Every verbose message written as a string starts with the name of the
+  command that writes it, in square brackets: an enclosing function, or the script's
+  file name outside every function (DEC-016).
+  Example: `Write-Verbose "[Get-Thing] Reading $Path."` inside `Get-Thing`.
 
 ## Static tests (GK04)
 
@@ -161,6 +179,14 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
   builds from the files `Instructions.Sources` lists, and each of them has a title.
   Example: a standard changed without rebuilding `AGENTS.md` fails, so agents never
   read an older rule.
+
+## Files (GK15)
+
+- **FP-001** — No file git tracks, and no untracked file it does not ignore, holds a
+  value that matches the message patterns, outside `Files.Exclude`. The pattern file
+  and binary files are not scanned (DEC-017).
+  Example: a local user-profile path pasted into a notes file fails before it is
+  committed, as it would in a commit message.
 
 ## The kit itself
 

@@ -5,15 +5,17 @@
 | Version | unreleased (first tag pending) |
 | Last audit | not yet audited |
 | Findings resolved | none recorded |
-| Tests | 100 static tests |
+| Tests | 155 static tests |
 
 ## 1. Secret scanning
 
-**Status:** implemented (GK05, GK06, GK07).
+**Status:** implemented (GK05, GK06, GK07); the file scan GK15 is optional.
 **Why:** a secret that reaches a remote has to be treated as leaked.
 **How:** gitleaks 8.30.1 scans the working tree, every commit not yet on a remote (or
 the commits a branch adds, with `-Base`), and every one of those commit messages
 through `gitleaks stdin`. The messages are also matched against the message patterns.
+With `Checks.Files` on, GK15 matches the same patterns against every file git tracks
+or would track, outside `Files.Exclude`.
 **Contract:** a found value is never printed in full: gitleaks runs with `--redact`,
 and a pattern match shows its first six characters only.
 
