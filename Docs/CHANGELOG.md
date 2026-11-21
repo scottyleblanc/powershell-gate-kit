@@ -54,6 +54,11 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Fixed
 
+- GK03 tries a file again, up to three times, when PSScriptAnalyzer 1.25.0 throws
+  while loading the custom rules ("more than one dynamic module in each dynamic
+  assembly", or a null reference); the throw was intermittent and stopped the whole
+  gate. A third throw fails GK03 with the file named, and the later checks still run.
+
 - `Templates/bitbucket-pipelines.yml` installs `libicu74`, `libssl3t64` and
   `libgssapi-krb5-2`. On the bare `ubuntu:24.04` image PowerShell stopped at start-up
   with "Couldn't find a valid ICU package installed on the system".
