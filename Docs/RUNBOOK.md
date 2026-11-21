@@ -18,6 +18,7 @@ How to add the gate to a repository that already has code, and how to keep it wo
 | [ADOPT-11](#adopt-11--run-the-gate-in-ci-and-require-it) | Run the gate in CI and require it |
 | [ADOPT-12](#adopt-12--add-the-pull-request-template) | Add the pull request template |
 | [ADOPT-13](#adopt-13--commit-and-push) | Commit and push |
+| [ADOPT-14](#adopt-14--run-the-unit-tests-on-a-linux-runner) | Run the unit tests on a Linux runner |
 | [PR-1](#pr-1--run-the-second-model-review) | Run the second-model review |
 | [PR-2](#pr-2--record-the-evidence-run) | Record the evidence run |
 | [PR-3](#pr-3--rebuild-agentsmd) | Rebuild `AGENTS.md` |
@@ -238,7 +239,7 @@ How to add the gate to a repository that already has code, and how to keep it wo
 2. Make the build a required check on the target branch:
    - **GitHub:** a branch protection rule or ruleset requiring the `gate` job.  This needs a public repository or a paid plan; on GitHub Free a private repository runs the gate but cannot block the merge.
    - **Bitbucket:** Repository settings, Branch restrictions, the rule for the target branch, Merge settings: tick "Minimum number of successful builds for the last commit with no failed builds and no in progress builds" and set it to 1.  A merge check blocks the merge only when the plan enforces merge checks ("Prevent a merge with unresolved merge checks"); otherwise a failed build only warns.  Which Bitbucket plan enforces it is not yet verified ([TODO.md](TODO.md)).
-3. Hosted runners are Linux.  When `Unit` is on and the unit tests need Windows, run the gate with `-Unit` on a self-hosted Windows runner, or leave `-Unit` out of the hosted job and run the unit tests elsewhere.
+3. Hosted Bitbucket runners are Linux; the GitHub template runs on `windows-latest`.  When `Unit` is on and some unit tests need Windows, tag them and run the rest on the Linux runner (ADOPT-14), run the gate with `-Unit` on a self-hosted Windows runner, or leave `-Unit` out of the hosted job and run the unit tests elsewhere.
 
 **Verify:** a pull request shows the gate build, and the merge checks list it beside the approval checks.
 **If this fails:** a check that does not appear in the merge checks is not configured on the branch rule; step 2.
@@ -265,6 +266,32 @@ How to add the gate to a repository that already has code, and how to keep it wo
 
 **Verify:** the hook runs the gate on that push, and the pull request build passes.
 **If this fails:** the failing check's line names its rule.
+
+### ADOPT-14 — Run the unit tests on a Linux runner
+
+**When:** `Unit` is on, CI runs on a Linux runner, and some unit tests need Windows.
+**Prerequisites:** ADOPT-11
+
+1. Tag each `Describe`, `Context` or `It` that needs Windows (NTFS ACLs, the service control manager, the registry, CIM) with `-Tag 'Windows'`.
+2. In the script `Unit.Script` names, exclude that tag off Windows and write a JUnit report to `test-results/`:
+   ```powershell
+   if (-not $IsWindows) { $config.Filter.ExcludeTag = @('Windows') }
+   $config.TestResult.Enabled      = $true
+   $config.TestResult.OutputFormat = 'JUnitXml'
+   $config.TestResult.OutputPath   = 'test-results/pester-unit.xml'
+   ```
+3. Make the untagged tests pass on Linux:
+   - Define a global stand-in for each Windows-only command a test mocks (`Get-Service`, `Get-CimInstance`, `sc.exe`) when it is missing, and make it throw when called unmocked.  `Mock` fails on a command that does not exist.
+   - Set the variables Windows always sets and the code reads, such as `TEMP` and `COMPUTERNAME`, in the CI file, or redirect them in the test.
+   - Read environment variables in their exact case; Linux names are case-sensitive.
+   - Resolve the user module path without `MyDocuments`, which is empty off Windows: `$XDG_DATA_HOME/powershell/Modules`, or `~/.local/share/powershell/Modules` when it is unset.
+   - Map Windows fixture paths such as `E:\app` to a Linux form in one test helper.
+   - Apply the ADOPT-9 step 2 rules.
+4. In the CI file, install what the suite needs (a JRE, pinned modules) and set the step 3 variables at the place the Bitbucket template marks.
+5. Run the full suite, tagged tests included, on a Windows host; the hosted job never runs them.
+
+**Verify:** the pull request build passes GK11, and the Bitbucket Tests tab lists the JUnit report without the tagged tests.
+**If this fails:** download the `test-results` artifact; each failing test there needs the tag (step 1) or a step 3 fix.
 
 ---
 

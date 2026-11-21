@@ -32,12 +32,13 @@ first-class; no release is tagged with one open.
       duration, passed by the CI templates (DEC-021), with tests
 - [x] [SEC] GK07 refuses a commit whose author or committer address `CommitEmails`
       does not allow (CM-002, DEC-022), on for the kit itself, with tests
+- [x] First run of the Linux path: `Install-GateTool.ps1` and the gate, with `-Unit`,
+      on a hosted Bitbucket runner
 - [ ] Prove on a copy of an existing module repository hosted on Bitbucket: baseline
       the existing findings, the gate passes, run the Bitbucket template
 - [ ] [SEC] Pin the Bitbucket template's image by digest
 - [ ] Verify which Bitbucket plan enforces a required pipeline as a merge check, and
       record it in the template
-- [ ] First run of the Linux path: `Install-GateTool.ps1` and the gate on Linux
 
 ## Later
 

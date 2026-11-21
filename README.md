@@ -29,7 +29,7 @@ PowerShell 7.6, git, PSScriptAnalyzer 1.25.0, Pester 5.7.1 and gitleaks 8.30.1.
 ## Installation
 
 The steps to add the gate to a repository, new or existing, are in
-[tools/gate/Docs/RUNBOOK.md](Docs/RUNBOOK.md): ADOPT-1 to ADOPT-13. The steps for each pull
+[tools/gate/Docs/RUNBOOK.md](Docs/RUNBOOK.md): ADOPT-1 to ADOPT-14. The steps for each pull
 request are PR-1 to PR-3, and updating the kit is UPD-1.
 
 ## Scripts
