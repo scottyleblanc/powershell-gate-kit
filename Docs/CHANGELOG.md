@@ -8,6 +8,10 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Added
 
+- Custom analyzer rule AN-018 (DEC-019): code does not change the Windows registry
+  through the item cmdlets on a registry path, `RegistryKey` change methods, a
+  writable `OpenSubKey`, `reg add` and the other changing `reg` verbs, or `regedit`
+  with arguments. An intended change carries a justified suppression.
 - `gate.config.psd1` can sit in `Gate/` instead of the repository root (DEC-018).
   GK01 reads whichever copy exists and fails CF-001 when there is a copy in both
   places. Paths in the file stay relative to the root.
@@ -117,6 +121,10 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Security
 
+- `Templates/claude-settings.json` and `Templates/agent-permissions.psd1` deny the
+  agent's own registry changes: `reg` with a changing verb, `regedit`, and the
+  changing PowerShell cmdlets on `HK*:` and `Registry::` paths. A target repository
+  copies both templates again, or adds the rules to its own files, to pick them up.
 - gitleaks and PowerShell downloads checked against pinned SHA-256 hashes.
 - Agent permission files checked against their documented rules (PM-001, PM-002).
 - GK13 fails a module package that would ship a file its `FileList` does not name.

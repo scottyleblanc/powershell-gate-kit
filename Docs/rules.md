@@ -13,7 +13,7 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 |---|---|---|---|
 | GK01 | config | Always; a failure stops the gate | CF-001 to CF-005 |
 | GK02 | tools | Always | — |
-| GK03 | analyzer | Always, except with `-Quick` (the pre-push hook, DEC-011) | AN-001 to AN-017 |
+| GK03 | analyzer | Always, except with `-Quick` (the pre-push hook, DEC-011) | AN-001 to AN-018 |
 | GK04 | static | Always | ST-001 |
 | GK05 | secrets | Always | SE-001 |
 | GK06 | commits | Always | SE-002 |
@@ -102,6 +102,13 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
   command that writes it, in square brackets: an enclosing function, or the script's
   file name outside every function (DEC-016).
   Example: `Write-Verbose "[Get-Thing] Reading $Path."` inside `Get-Thing`.
+- **AN-018** — Code does not change the Windows registry: no provider cmdlet that
+  changes an item or property on a registry path, no `RegistryKey` change method, no
+  `OpenSubKey` for writing, and no `reg add`, `reg delete`, `reg import` or the like,
+  or `regedit` with arguments. Reading is allowed. An intended change carries a
+  suppression with a `Justification` (DEC-019).
+  Example: `Set-ItemProperty -Path HKLM:\SOFTWARE\Thing -Name Level -Value 1` fails;
+  `Get-ItemProperty` on the same path passes.
 
 ## Static tests (GK04)
 
@@ -131,7 +138,9 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 - **PM-001** — Each documented agent settings file keeps every documented deny rule,
   holds no allow rule or setting beyond the documented ones.
   Example: removing `Bash(git push *)` from the deny list fails until the permissions
-  file changes in the same diff.
+  file changes in the same diff. The templates' deny rules include registry changes
+  (`reg add`, `regedit`, and `Set-`, `New-`, `Remove-` and other changing cmdlets on
+  `HK*:` and `Registry::` paths), so an agent cannot drop them unseen.
 - **PM-002** — Every committed agent settings file is documented.
   Example: committing `.claude/settings.json` with no entry in the permissions file
   fails.

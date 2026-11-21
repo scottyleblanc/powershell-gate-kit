@@ -5,7 +5,7 @@
 | Version | unreleased (first tag pending) |
 | Last audit | not yet audited |
 | Findings resolved | none recorded |
-| Tests | 155 static tests |
+| Tests | 181 static tests |
 
 ## 1. Secret scanning
 
@@ -44,7 +44,9 @@ data. Every path is checked to be relative and inside the repository (CF-004).
 asking; a loosened rule should be a visible, deliberate change.
 **How:** each documented settings file is compared with its entry in the permissions
 file: every deny rule present, no allow rule or setting beyond the documented ones. A
-committed settings file with no entry fails.
+committed settings file with no entry fails. The templates deny registry changes by
+the agent (`reg add` and the like, `regedit`, and changing cmdlets on `HK*:` and
+`Registry::` paths); AN-018 fails the same changes in the code.
 **Contract:** loosening the rules means changing the permissions file in the same diff.
 
 ## 5. Confined reviewer session
@@ -94,6 +96,11 @@ gate proves it is current and passing, not that the run happened as recorded.
   the same.
 - The message patterns catch values with a known shape only; a real name that matches
   no pattern is left to review.
+- Agent deny rules match the command text the agent writes, not the program it runs:
+  `pwsh -Command "..."`, a path in a variable, or a relative path after
+  `Set-Location HKLM:` is not stopped. Running the agent without administrator rights
+  keeps HKLM out of reach; HKCU stays writable. AN-018 reads source text the same way,
+  so a registry path held in a variable is not reported.
 
 ## Audit record
 

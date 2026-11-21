@@ -82,7 +82,7 @@ agent instruction file (default `AGENTS.md`).
 |---|---|
 | Version | unreleased (first tag pending) |
 | Last audit | not yet audited |
-| Tests | 160 static tests: 43 gate behaviour cases, 60 analyzer rule cases, 57 unbranded file checks |
+| Tests | 181 static tests: 44 gate behaviour cases, 77 analyzer rule cases, 60 unbranded file checks |
 | Open items | See [Docs/SECURITY.md](Docs/SECURITY.md#open-items) |
 
 ## Licence

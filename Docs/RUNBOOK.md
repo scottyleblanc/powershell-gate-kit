@@ -220,7 +220,7 @@ How to add the gate to a repository that already has code, and how to keep it wo
 
 2. In `gate.config.psd1`, set `Permissions = 'Gate/agent-permissions.psd1'`.
 
-   As copied, `.claude/settings.json` lets the agent run the gate and the read-only git commands (`status`, `diff`, `log`, `show`) without asking.  It denies `git push`, `rm` and `rmdir`, and reading `~/.aws`, `~/.ssh` and the Claude Code credentials file.  The permission record lists the rules that settings file may hold.  To allow the agent more, change both files in the same pull request, so the change shows in review.
+   As copied, `.claude/settings.json` lets the agent run the gate and the read-only git commands (`status`, `diff`, `log`, `show`) without asking.  It denies `git push`, `rm` and `rmdir`, reading `~/.aws`, `~/.ssh` and the Claude Code credentials file, and changing the Windows registry through `reg`, `regedit` or the PowerShell item cmdlets.  Deny rules match the command text the agent writes, so they stop the direct forms only; analyzer rule AN-018 checks the repository's code for registry changes.  The permission record lists the rules that settings file may hold.  To allow the agent more, change both files in the same pull request, so the change shows in review.
 
 **Verify:** the gate prints `[PASS] GK08 permissions`.
 **If this fails:** GK08 fails when the settings file drops a deny rule or adds an allow rule or setting the record does not list (PM-001), and when an agent settings file is committed with no entry in the record (PM-002).
