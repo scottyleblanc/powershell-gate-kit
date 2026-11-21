@@ -13,19 +13,19 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 |---|---|---|---|
 | GK01 | config | Always; a failure stops the gate | CF-001 to CF-005 |
 | GK02 | tools | Always | — |
-| GK03 | analyzer | Always, except with `-Quick` (the pre-push hook, DEC-011) | AN-001 to AN-018 |
-| GK04 | static | Always | ST-001 |
+| GK03 | analyzer | Always, except with `-Quick` while `Quick` lists it (the default; DEC-011, DEC-020) | AN-001 to AN-018 |
+| GK04 | static | Always, except with `-Quick` while `Quick` lists it | ST-001 |
 | GK05 | secrets | Always | SE-001 |
 | GK06 | commits | Always | SE-002 |
 | GK07 | messages | Always | CM-001 |
 | GK08 | permissions | Always | PM-001, PM-002 |
-| GK09 | version | When `Checks.Version` is on | VR-001; VR-002 with `-Base` |
+| GK09 | version | When `Checks.Version` is on; not with `-Quick` while `Quick` lists it | VR-001; VR-002 with `-Base` |
 | GK10 | review | When `Checks.Review` is on (the default), with `-Base` | RV-001 |
 | GK11 | unit | When `Checks.Unit` is on, with `-Unit` | UT-001 |
 | GK12 | evidence | When `Checks.Evidence` is on, with `-Base` | EV-001 |
 | GK13 | package | When `Checks.Package` is on, with `-Base` | PK-001 |
-| GK14 | instructions | When `Checks.Instructions` is on | AG-001 |
-| GK15 | files | When `Checks.Files` is on | FP-001 |
+| GK14 | instructions | When `Checks.Instructions` is on; not with `-Quick` while `Quick` lists it | AG-001 |
+| GK15 | files | When `Checks.Files` is on; not with `-Quick` while `Quick` lists it | FP-001 |
 
 ## Config (GK01)
 
@@ -37,7 +37,9 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
   Example: `@{ SchemaVersion = 1 }` is the smallest valid config.
 - **CF-003** — The config holds only the keys in `Templates/gate.config.psd1`, each of
   the right shape.
-  Example: a misspelt `Analyser` key fails rather than being ignored.
+  Example: a misspelt `Analyser` key fails rather than being ignored. `Quick` may list
+  only GK03, GK04, GK09, GK14 and GK15, so `Quick = @('GK05')` fails: the config, tool,
+  secret and permission checks always run (DEC-020).
 - **CF-004** — Every path in the config is relative, uses `/`, stays inside the
   repository, and names a file or folder that exists.
   Example: `StaticTests = '../shared-tests'` fails.

@@ -8,6 +8,12 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Added
 
+- The `Quick` config key lists the checks `-Quick` skips, `GK03` by default; it may
+  list GK03, GK04, GK09, GK14 and GK15 (CF-003, DEC-020). The config, tool, secret
+  and permission checks always run.
+- `.github/workflows/gate.yml`: the kit runs every check on itself, with `-Base`, on
+  each pull request into main. The kit's own hook now passes `-Quick` and skips GK03
+  and GK04, and the kit's own config turns `Checks.Review` off (DEC-020).
 - Custom analyzer rule AN-018 (DEC-019): code does not change the Windows registry
   through the item cmdlets on a registry path, `RegistryKey` change methods, a
   writable `OpenSubKey`, `reg add` and the other changing `reg` verbs, or `regedit`

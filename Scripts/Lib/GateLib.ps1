@@ -35,7 +35,11 @@ $script:GateConfigDefault = [ordered]@{
     Package         = [ordered]@{ Manifest = ''; Build = '' }
     Instructions    = [ordered]@{ Output = 'AGENTS.md'; Title = 'Agent instructions'; Sources = @() }
     Files           = [ordered]@{ Exclude = @() }
+    Quick           = @('GK03')
 }
+
+# The checks -Quick may skip. The config, tool, secret and permission checks always run.
+$script:GateQuickAllowed = @('GK03', 'GK04', 'GK09', 'GK14', 'GK15')
 
 function Get-GateRepoRoot {
     <#
@@ -204,6 +208,12 @@ function Import-GateConfig {
 
     foreach ($name in @($config.Checks.Keys)) {
         if ($config.Checks[$name] -isnot [bool]) { $problems.Add("gate.config.psd1: Checks.$name must be `$true or `$false (CF-003)") }
+    }
+
+    foreach ($id in @($config.Quick)) {
+        if ($id -notin $script:GateQuickAllowed) {
+            $problems.Add("gate.config.psd1: Quick may list only $($script:GateQuickAllowed -join ', '); '$id' always runs (CF-003)")
+        }
     }
 
     # Every path is relative and inside the repository (CF-004); a file the config names

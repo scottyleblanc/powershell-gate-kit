@@ -137,7 +137,7 @@ How to add the gate to a repository that already has code, and how to keep it wo
    git config core.hooksPath Gate/hooks
    ```
 
-   The hook runs the gate with `-Quick` before every push and refuses the push when a check fails.  `-Quick` skips GK03, the slowest check; CI runs it on every pull request (DEC-011).  Do not run the full gate locally after every change; the hook and CI already run it.
+   The hook runs the gate with `-Quick` before every push and refuses the push when a check fails.  `-Quick` skips the checks the `Quick` key in `gate.config.psd1` lists: GK03, the analyzer, by default.  A slow check can join it, such as GK04 when the static tests take minutes; the config, tool, secret and permission checks always run.  CI runs every check on every pull request (DEC-011, DEC-020).  Do not run the full gate locally after every change; the hook and CI already run it.
 3. Do not set `core.hooksPath` in a clone that must never push, such as a deployed copy guarded by its own hook: the repository setting overrides any global guard.
 
 **Verify:** `git config core.hooksPath` prints `Gate/hooks`, `Gate/hooks/pre-push` exists and is executable (`git ls-files -s Gate/hooks/pre-push` shows mode `100755`), and the next `git push` prints the gate's lines before it sends anything.

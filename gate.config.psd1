@@ -5,7 +5,9 @@
     SchemaVersion = 1
 
     Checks = @{
-        Review  = $true
+        # Off for the kit itself: its pull requests carry no model review record
+        # (DEC-020). The template default stays on for target repositories.
+        Review  = $false
         Version = $false
         Unit    = $false
         Files   = $true
@@ -27,4 +29,8 @@
         Record = 'Review/LastReview.json'
         Exempt = @()
     }
+
+    # The checks the pre-push hook skips; .github/workflows/gate.yml runs them on every
+    # pull request (DEC-020).
+    Quick = @('GK03', 'GK04')
 }
