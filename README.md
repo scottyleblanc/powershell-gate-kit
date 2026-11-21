@@ -7,7 +7,9 @@ pass before it is pushed or merged. It runs PSScriptAnalyzer with nine house rul
 the repository's static tests, gitleaks over the working tree, the unpushed commits and
 their messages, a check of committed AI-agent permission files, and a check that the
 branch carries an answered second-model review. Optional checks hold one version
-number everywhere and run the unit tests. The same command runs in the pre-push hook
+number everywhere, run the unit tests, require a recorded run of tests CI cannot run,
+check that a module package ships only the files its manifest lists, and keep the AI
+agent instruction file in step with the standards it is built from. The same command runs in the pre-push hook
 and in CI, so a change that fails locally also fails the pull request.
 
 A repository takes the kit as a git subtree in its `tools/gate/` folder and configures
@@ -86,14 +88,17 @@ Analyzer = @{
 (DEC-012).
 
 **Which optional checks run.** The core checks GK01 to GK08 always run. The `Checks`
-table at the top of `gate.config.psd1` turns the other three on (`$true`) or off
+table at the top of `gate.config.psd1` turns the other six on (`$true`) or off
 (`$false`). As copied from `tools/gate/Templates/gate.config.psd1`:
 
 ```powershell
 Checks = @{
-    Review  = $true    # GK10, with -Base: the second-model review record
-    Version = $false   # GK09: one version everywhere, and the tag rule with -Base
-    Unit    = $false   # GK11, with -Unit: the repository's unit test script
+    Review       = $true    # GK10, with -Base: the second-model review record
+    Version      = $false   # GK09: one version everywhere, and the tag rule with -Base
+    Unit         = $false   # GK11, with -Unit: the repository's unit test script
+    Evidence     = $false   # GK12, with -Base: a recorded run of tests CI cannot run
+    Package      = $false   # GK13, with -Base: the module package holds only its FileList
+    Instructions = $false   # GK14: AGENTS.md matches the standards it is built from
 }
 ```
 
@@ -105,6 +110,9 @@ are on, and a check that is off prints `[OFF]`.
 | `Review` | GK10 | On a pull request, requires a second-model review record covering the branch, with every finding answered ([tools/gate/Docs/REVIEW.md](Docs/REVIEW.md)) | on | You use the review step; it needs Claude Code installed. Set `$false` if you do not | — |
 | `Version` | GK09 | The module version is the same in the manifest, the newest CHANGELOG release and the listed notes files | off | The target is a module with a CHANGELOG | `Version.Manifest`, `Version.Changelog` |
 | `Unit` | GK11 | Runs the target's unit test script when the gate is run with `-Unit` | off | The target has a script that runs its tests and exits 0 only when they pass | `Unit.Script` |
+| `Evidence` | GK12 | On a pull request that changes a path in `Evidence.Paths`, requires a committed record of a passing run of `Evidence.Script`, on a clean tree, with no later change but the records | off | The target has tests CI cannot run, such as integration tests against a local database | `Evidence.Script`, `Evidence.Paths` |
+| `Package` | GK13 | On a pull request, builds the module package in a temporary folder and fails unless it holds exactly the files the manifest's `FileList` names | off | The target is a module published to a gallery | `Package.Manifest`; `Package.Build` if the module is built first |
+| `Instructions` | GK14 | Fails unless `AGENTS.md` is what `tools/gate/Scripts/Export-AgentInstruction.ps1` builds from the standards files | off | The target keeps its coding standards in Markdown files and wants AI agents to read them | `Instructions.Sources` |
 
 `Permissions` is set in step 7. The other keys (`StaticTests`, `Gitleaks`,
 `MessagePatterns`) can stay `''`, which uses the kit's defaults or turns the check's
@@ -194,7 +202,10 @@ checklist. On Bitbucket, use the text of
 Commit `gate.config.psd1`, `.githooks/pre-push`, the CI file
 (`.github/workflows/gate.yml` or `bitbucket-pipelines.yml`),
 `.github/pull_request_template.md`, any baseline file, and the two files from step 7
-if you used it, then push. The hook runs
+if you used it, then push. With `Instructions` on, run
+`pwsh -NoProfile -File ./tools/gate/Scripts/Export-AgentInstruction.ps1` first and
+commit `AGENTS.md` too. Claude Code reads it when `CLAUDE.md` holds the line
+`@AGENTS.md`. The hook runs
 the gate on that push.
 
 ### For each pull request
@@ -208,6 +219,20 @@ pwsh -NoProfile -File ./tools/gate/Scripts/Invoke-ModelReview.ps1
 It writes the review record to `Review/LastReview.json` (the `Review.Record` key in
 `gate.config.psd1`). Answer each finding in that file and commit it. Without it, GK10
 fails in CI. The full path is in [tools/gate/Docs/REVIEW.md](Docs/REVIEW.md).
+
+When `Evidence` is on and the branch changes a path in `Evidence.Paths`, run the
+evidence script as the last step, once everything else is committed:
+
+```sh
+pwsh -NoProfile -File ./tools/gate/Scripts/Invoke-EvidenceRun.ps1
+```
+
+It runs `Evidence.Script` and writes `Evidence/LastRun.json` (the `Evidence.Record`
+key). Commit that file as the branch's last commit. A later change to any other file
+makes the record stale and GK12 fails; the review record may still change.
+
+When a standards file listed in `Instructions.Sources` changes, run
+`tools/gate/Scripts/Export-AgentInstruction.ps1` and commit `AGENTS.md` with it.
 
 ### Updating the kit
 
@@ -225,11 +250,13 @@ Paths as they are in a target.
 
 | Script | What it does |
 |---|---|
-| `tools/gate/Scripts/Invoke-Gate.ps1` | Runs the checks GK01 to GK11; exits 0 when all pass |
+| `tools/gate/Scripts/Invoke-Gate.ps1` | Runs the checks GK01 to GK14; exits 0 when all pass |
 | `tools/gate/Scripts/Install-GateTool.ps1` | Installs the pinned tool versions; gitleaks is hash-checked |
 | `tools/gate/Scripts/Invoke-ModelReview.ps1` | Runs the second-model review once and writes the review record |
 | `tools/gate/Scripts/Update-AnalyzerBaseline.ps1` | Records the current analyzer findings as the baseline |
 | `tools/gate/Scripts/Invoke-StaticTest.ps1` | Runs the static test folder for GK04 |
+| `tools/gate/Scripts/Invoke-EvidenceRun.ps1` | Runs the evidence script and writes the evidence record for GK12 |
+| `tools/gate/Scripts/Export-AgentInstruction.ps1` | Builds `AGENTS.md` from the standards files for GK14 |
 
 The checks and the rules each enforces are in
 [tools/gate/Docs/rules.md](Docs/rules.md); the review path is in
@@ -256,10 +283,14 @@ change) fails; it never passes by default.
 
 ## Logging and Diagnostics
 
-The gate writes to standard output only, and writes no file. Found values are never
+The gate writes to standard output only, and writes no file in the repository; GK13
+builds the package in a temporary folder and deletes it. Found values are never
 printed in full: gitleaks runs with `--redact`, and a pattern match shows only its first
-six characters. `tools/gate/Scripts/Invoke-ModelReview.ps1` writes only the review
-record named in `gate.config.psd1` (default `Review/LastReview.json`).
+six characters. Each other script writes one file named in `gate.config.psd1`:
+`Invoke-ModelReview.ps1` the review record (default `Review/LastReview.json`),
+`Invoke-EvidenceRun.ps1` the evidence record (default `Evidence/LastRun.json`, which
+holds no host name, user name or outside path), and `Export-AgentInstruction.ps1` the
+agent instruction file (default `AGENTS.md`).
 
 ## Current Security State
 
@@ -267,7 +298,7 @@ record named in `gate.config.psd1` (default `Review/LastReview.json`).
 |---|---|
 | Version | unreleased (first tag pending) |
 | Last audit | not yet audited |
-| Tests | 87 static tests: 25 gate behaviour cases, 17 analyzer rule cases, 45 unbranded file checks |
+| Tests | 100 static tests: 36 gate behaviour cases, 17 analyzer rule cases, 47 unbranded file checks |
 | Open items | See [Docs/SECURITY.md](Docs/SECURITY.md#open-items) |
 
 ## Licence

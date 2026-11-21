@@ -16,6 +16,8 @@ first-class; no release is tagged with one open.
       the hook and through CI on a real pull request
 - [x] Record that GitHub Free cannot require the check on a private repository (found
       by the fresh-repository proof)
+- [x] Optional checks GK12 evidence, GK13 package and GK14 instructions, with tests
+      (DEC-013)
 - [ ] Prove on a copy of an existing module repository hosted on Bitbucket: baseline
       the existing findings, the gate passes, run the Bitbucket template
 - [ ] [SEC] Pin the Bitbucket template's image by digest

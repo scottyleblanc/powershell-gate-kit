@@ -5,7 +5,7 @@
 | Version | unreleased (first tag pending) |
 | Last audit | not yet audited |
 | Findings resolved | none recorded |
-| Tests | 87 static tests |
+| Tests | 100 static tests |
 
 ## 1. Secret scanning
 
@@ -61,12 +61,35 @@ run commands or write files.
 **How:** a read-only token, the `pull_request` trigger only, no secrets, credentials not
 kept in the checkout, and the one action pinned to a full commit SHA.
 
+## 7. Package contents
+
+**Status:** implemented (GK13, optional).
+**Why:** `Compress-PSResource` and `Publish-PSResource` package every file in the module
+folder and ignore `FileList`, so a scratch file, test output or local config left there
+ships, and a published package version cannot be withdrawn.
+**How:** GK13 builds the package in a temporary folder, reads its entries, leaves out
+only the entries NuGet adds itself, and compares the rest with `FileList`. Nothing is
+published and no package repository is registered; the folder is deleted afterwards.
+**Contract:** a manifest with no `FileList`, a packaged file it does not name, or a
+named file not packaged fails GK13.
+
+## 8. Test evidence
+
+**Status:** implemented (GK12, optional).
+**Why:** tests that need a machine or service CI does not have can be skipped silently.
+**How:** `Invoke-EvidenceRun.ps1` records the commit, whether the tree was clean and
+the script's exit code; GK12 requires a passing run on a clean tree with no change
+after it but the records. The record holds no host name, user name or outside path.
+**Contract:** the record is the author's attestation, as the review record is: the
+gate proves it is current and passing, not that the run happened as recorded.
+
 ## Open items
 
 - The Bitbucket template uses `ubuntu:24.04` by tag, not by digest.
 - The Linux path has not run yet.
 - The review record is the author's attestation: the gate proves it covers the branch
-  and is answered, not that the session ran as recorded.
+  and is answered, not that the session ran as recorded. The evidence record (GK12) is
+  the same.
 - The message patterns catch values with a known shape only; a real name that matches
   no pattern is left to review.
 

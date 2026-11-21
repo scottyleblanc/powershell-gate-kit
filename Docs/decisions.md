@@ -30,22 +30,23 @@ squashed subtree commit lists them. The one exception is `LICENSE` (DEC-010).
 
 The kit holds the checks any PowerShell repository can use: config, tools, analyzer,
 static tests, secrets, commits, messages, agent permissions and the second-model
-review (on by default), plus two optional checks, version and unit tests. It also holds
-the scripts behind them, the templates a repository copies in (config, hook, CI
-wrappers, pull request template) and the review guide.
+review (on by default), plus five optional checks: version, unit tests, test evidence,
+package contents and agent instructions (DEC-013). It also holds the scripts behind
+them, the templates a repository copies in (config, hook, CI wrappers, pull request
+template) and the review guide.
 
 **Why:** these checks need nothing from a repository but paths. Checks that depend on
 one repository's build, database or test layout stay in that repository.
 
-**Rules out:** a package-contents check, integration-test evidence, an invariant
-linter, mutation tests, seeded-defect runs and an agent-instruction generator.
+**Rules out:** an invariant linter, mutation tests and seeded-defect runs. Each depends
+on one repository's own conventions for documenting and testing its invariants.
 
 ## DEC-004 — One config file, data only
 
 A repository configures the gate in one file, `gate.config.psd1` at its root. It is
 read with `Import-PowerShellDataFile`, so no code in it runs. Every path comes from the
 config; the kit never assumes a folder name. The core checks cannot be turned off;
-only review, version and unit can.
+only the optional checks in the `Checks` table can.
 
 **Why:** a gate whose core checks can be switched off by one line is not a gate. Data
 files cannot run commands, so a config change cannot run code during the gate.
@@ -148,3 +149,31 @@ line.
 already organizes by.
 
 **Enforced by:** the gate tests under "GK03 analyzer with ExcludeRulesByPath".
+
+## DEC-013 — Test evidence, package contents and agent instructions are optional checks
+
+GK12 (evidence), GK13 (package) and GK14 (instructions) are optional checks, off by
+default. Each reads only paths from `gate.config.psd1`; the part that belongs to one
+repository stays in that repository's own script.
+
+- **Evidence:** the repository's script runs the tests CI cannot run;
+  `Invoke-EvidenceRun.ps1` runs it and records the result, and GK12 checks the record
+  is a passing run, on a clean tree, current for the branch. The evidence and review
+  records may change after the run, since neither changes code.
+- **Package:** GK13 builds the package with `Compress-PSResource`, which PowerShell 7.6
+  ships, in a temporary folder, and compares it with the manifest's `FileList`. A
+  repository whose module is built first names its build script.
+- **Instructions:** `Export-AgentInstruction.ps1` joins the listed standards files into
+  `AGENTS.md`; GK14 fails when the committed file differs from what it builds.
+
+**Why:** each check needs nothing but paths, and each closes a gap a repository cannot
+see from its own tests: changes that skipped the tests CI cannot run, a file shipped
+that `FileList` does not name (PowerShell packages the whole module folder), and agent
+instructions that lag the standards they were built from.
+
+**Rules out:** the gate running the evidence tests itself (they need a machine or
+service CI does not have), registering a package repository to build the package (it
+would change the user's PSResource settings), and publishing anything.
+
+**Enforced by:** the gate tests under "GK12 evidence", "GK13 package" and "GK14
+instructions".

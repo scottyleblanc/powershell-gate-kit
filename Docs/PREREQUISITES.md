@@ -9,7 +9,8 @@ PowerShell 7.6 minimum (7.6 LTS); tested on 7.6.10. Every script starts with
 
 | Tool | Version | Source | Needed by |
 |---|---|---|---|
-| git | any current | the platform's package manager | every check that reads history (GK06, GK07, GK08, GK09, GK10) |
+| git | any current | the platform's package manager | every check that reads history (GK06 to GK10, GK12), and `Invoke-EvidenceRun.ps1` |
+| Microsoft.PowerShell.PSResourceGet | 1.1 or later (`Compress-PSResource`) | ships with PowerShell 7.6 | GK13 only |
 | PSScriptAnalyzer | 1.25.0 exactly | PSGallery | GK03, `Update-AnalyzerBaseline.ps1` |
 | Pester | 5.x (5.7.1 installed) | PSGallery | GK04, the kit's own tests |
 | gitleaks | 8.30.1 exactly | GitHub release, hash-checked | GK05, GK06, GK07 |
@@ -61,3 +62,6 @@ The gate behaviour tests take about a minute and a half.
   has not run yet.
 - Only x64 gitleaks hashes are pinned.
 - GK11 trusts the unit script's exit code; it does not check what the script ran.
+  `Invoke-EvidenceRun.ps1` trusts the evidence script's exit code the same way.
+- GK13 reads `Package.Manifest` at a fixed path, so a build that writes the module to a
+  folder named after its version needs a fixed output folder.
