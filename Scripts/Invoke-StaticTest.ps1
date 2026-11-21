@@ -1,4 +1,5 @@
 #Requires -Version 7.6
+
 <#
 .SYNOPSIS
     Runs the Pester tests in one folder for check GK04 (rule ST-001).

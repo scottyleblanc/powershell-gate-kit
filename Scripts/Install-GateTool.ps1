@@ -1,4 +1,5 @@
 #Requires -Version 7.6
+
 <#
 .SYNOPSIS
     Installs the exact tool versions the gate needs: PSScriptAnalyzer, Pester and

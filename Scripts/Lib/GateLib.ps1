@@ -39,11 +39,17 @@ function Get-GateRepoRoot {
     <#
     .SYNOPSIS
         Returns the root of the git checkout that holds a folder.
+    .DESCRIPTION
+        Asks git for the top level of the working tree that holds the folder.
     .PARAMETER Path
         A folder inside the checkout.
+    .EXAMPLE
+        $repoRoot = Get-GateRepoRoot -Path (Get-Location).Path
     .OUTPUTS
         System.String. The root, as a full path. Throws when the folder is not in a
         git checkout.
+    .NOTES
+        Needs git on the PATH (GK02 checks for it).
     #>
     [CmdletBinding()]
     [OutputType([string])]
@@ -65,13 +71,21 @@ function Resolve-GatePath {
     <#
     .SYNOPSIS
         Turns a config path into a full path under the repository root (rule CF-004).
+    .DESCRIPTION
+        Rejects an absolute path, a drive letter, a '\' separator and a '..' segment,
+        then joins the '/' separated segments under the root.
     .PARAMETER RepoRoot
         The repository root.
     .PARAMETER RelativePath
         A path from gate.config.psd1: relative, '/' separated, with no '..' segment.
+    .EXAMPLE
+        $baseline = Resolve-GatePath -RepoRoot $repoRoot -RelativePath 'Gate/analyzer-baseline.psd1'
     .OUTPUTS
         System.String. The full path. Throws when the path is absolute or leaves the
         repository.
+    .NOTES
+        Does not check that the path exists; Import-GateConfig does that where a rule
+        needs it.
     #>
     [CmdletBinding()]
     [OutputType([string])]
@@ -104,11 +118,21 @@ function Import-GateConfig {
     .SYNOPSIS
         Reads gate.config.psd1 from the repository root and checks it (rules CF-001 to
         CF-005).
+    .DESCRIPTION
+        Starts from the defaults, overlays the keys the file sets, and lists every
+        problem found: a missing or unreadable file, an unknown key, a value of the
+        wrong shape, and a path that is absolute, leaves the repository or does not
+        exist.
     .PARAMETER RepoRoot
         The repository root.
+    .EXAMPLE
+        $read = Import-GateConfig -RepoRoot $repoRoot
+        if ($read.Problems.Count -gt 0) { $read.Problems }
     .OUTPUTS
         PSCustomObject with Config (an ordered hashtable with every default filled in)
         and Problems (a string array; empty when the config is valid).
+    .NOTES
+        Reads the file with Import-PowerShellDataFile, so no code in it runs.
     #>
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
@@ -272,7 +296,10 @@ function Invoke-GateAnalyzer {
     <#
     .SYNOPSIS
         Runs PSScriptAnalyzer over the folders the config names, with the kit's
-        settings and custom rules. A finding from a rule that
+        settings and custom rules.
+    .DESCRIPTION
+        Analyzes every .ps1, .psm1 and .psd1 file under Analyzer.Paths except those
+        matching Analyzer.Exclude. A finding from a rule that
         Analyzer.ExcludeRulesByPath lists for a folder is dropped for files under it.
     .PARAMETER RepoRoot
         The repository root.
@@ -280,9 +307,14 @@ function Invoke-GateAnalyzer {
         The kit's root folder (the parent of Scripts\).
     .PARAMETER Config
         The config returned by Import-GateConfig.
+    .EXAMPLE
+        $analysis = Invoke-GateAnalyzer -RepoRoot $repoRoot -KitRoot $kitRoot -Config $read.Config
     .OUTPUTS
         PSCustomObject with FileCount and Findings; each finding has Path (relative,
         '/' separated), Line, Rule and Message.
+    .NOTES
+        Tries a file again when PSScriptAnalyzer throws while it loads the custom
+        rules, up to three times.
     #>
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
@@ -375,10 +407,14 @@ function Compare-AnalyzerBaseline {
         The findings from Invoke-GateAnalyzer.
     .PARAMETER BaselineFile
         The baseline file, or an empty string for none.
+    .EXAMPLE
+        $compared = Compare-AnalyzerBaseline -Findings $analysis.Findings -BaselineFile $baselinePath
     .OUTPUTS
         PSCustomObject with New (findings that fail), Held (the count the baseline
         holds) and Shrinkable (file and rule pairs with fewer findings than the
         baseline allows).
+    .NOTES
+        Update-AnalyzerBaseline.ps1 writes the baseline file this reads.
     #>
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
@@ -424,12 +460,19 @@ function Select-GateChangedPath {
     <#
     .SYNOPSIS
         Returns the changed paths that a list of config paths covers.
+    .DESCRIPTION
+        A path is covered when it equals an input, or starts with an input that ends
+        in /.
     .PARAMETER Changed
         Repository-relative paths, as git diff --name-only prints them.
     .PARAMETER Inputs
         Config paths: a file, or a folder ending in / that covers everything under it.
+    .EXAMPLE
+        $touched = @(Select-GateChangedPath -Changed $changed -Inputs $config.Version.PackageInputs)
     .OUTPUTS
         System.String. Each changed path that an input covers.
+    .NOTES
+        Used by GK09 (package inputs) and GK12 (evidence paths).
     #>
     [CmdletBinding()]
     [OutputType([string])]
@@ -470,9 +513,14 @@ function Get-GateAgentInstruction {
         when the repository is the kit itself.
     .PARAMETER Config
         The config from Import-GateConfig.
+    .EXAMPLE
+        $text = Get-GateAgentInstruction -RepoRoot $repoRoot -KitPath './tools/gate' -Config $read.Config
     .OUTPUTS
         System.String. The file's text, with LF line endings and a final newline.
         Throws when a source file has no first-level title or an unclosed code fence.
+    .NOTES
+        Export-AgentInstruction.ps1 writes the result; GK14 compares it with the
+        committed file.
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('Measure-AN006PathWithJoinPath', '', Justification = 'A Markdown link target is joined with / on every platform; it is a URL, not a file system path.')]
     [CmdletBinding()]

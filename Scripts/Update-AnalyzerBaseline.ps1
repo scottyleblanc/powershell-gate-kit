@@ -1,4 +1,5 @@
 #Requires -Version 7.6
+
 <#
 .SYNOPSIS
     Records the current analyzer findings as the repository's baseline (rule AN-001).

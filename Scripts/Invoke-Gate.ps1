@@ -1,4 +1,5 @@
 #Requires -Version 7.6
+
 <#
 .SYNOPSIS
     Runs every check in one command: the gate.

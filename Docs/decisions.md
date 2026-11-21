@@ -177,3 +177,21 @@ would change the user's PSResource settings), and publishing anything.
 
 **Enforced by:** the gate tests under "GK12 evidence", "GK13 package" and "GK14
 instructions".
+
+## DEC-014 — Strict mode, CmdletBinding and help are checked where a command starts
+
+AN-010, AN-011 and AN-013 check a script that has a param block and every function
+not defined inside another function or such a script. A function defined inside one
+is exempt.
+
+**Why:** strict mode and the error preference are inherited by child scopes, so a
+nested function already runs under the settings of the command that defines it, and
+it is not a command a user calls by name or asks `Get-Help` about. Requiring the
+settings, the attribute and full help on every nested helper adds noise without
+closing a gap. Help that `Get-Help` cannot read counts as missing: it fails the user
+as completely as no help at all.
+
+**Rules out:** checking nested functions; checking a script that has no param block
+(a module file or a dot-sourced library, whose functions are checked one by one).
+
+**Enforced by:** the analyzer rule tests for AN-010 to AN-013.

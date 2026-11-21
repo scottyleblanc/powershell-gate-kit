@@ -1,4 +1,5 @@
 #Requires -Version 7.6
+
 <#
 .SYNOPSIS
     Runs the second-model review of the current branch and writes the review record.

@@ -1,6 +1,6 @@
 #Requires -Version 7.6
 
-# Rules AN-002 to AN-009: each custom analyzer rule reports its defect and stays quiet
+# Rules AN-002 to AN-013: each custom analyzer rule reports its defect and stays quiet
 # on the corrected code. A rule that never fires would let GK03 pass anything.
 
 BeforeDiscovery {
@@ -45,6 +45,44 @@ BeforeDiscovery {
             Bad  = 'Write-Output "done ' + [char]::ConvertFromUtf32(0x2705) + '"'
             Good = 'Write-Output "[INFO] done"'
         }
+        @{
+            Rule = 'Measure-AN010StrictModeSet'
+            Bad  = 'function Get-Thing { [CmdletBinding()] param([string]$Name) $Name }'
+            Good = "function Get-Thing { [CmdletBinding()] param([string]`$Name) Set-StrictMode -Version Latest; `$ErrorActionPreference = 'Stop'; `$Name }"
+        }
+        @{
+            Rule = 'Measure-AN011CmdletBindingDeclared'
+            Bad  = 'function Get-Thing { param([string]$Name) $Name }'
+            Good = 'function Get-Thing { [CmdletBinding()] param([string]$Name) $Name }'
+        }
+        @{
+            Rule = 'Measure-AN012SuppressionJustified'
+            Bad  = "function Get-Thing { [Diagnostics.CodeAnalysis.SuppressMessage('PSAvoidUsingWriteHost', '')] [CmdletBinding()] param() }"
+            Good = "function Get-Thing { [Diagnostics.CodeAnalysis.SuppressMessage('PSAvoidUsingWriteHost', '', Justification = 'Console output.')] [CmdletBinding()] param() }"
+        }
+        @{
+            Rule = 'Measure-AN013HelpComplete'
+            Bad  = 'function Get-Thing { [CmdletBinding()] param([string]$Name) $Name }'
+            Good = @'
+function Get-Thing {
+    <#
+    .SYNOPSIS
+        Returns a name.
+    .DESCRIPTION
+        Returns the name it is given.
+    .PARAMETER Name
+        The name.
+    .EXAMPLE
+        Get-Thing -Name 'x'
+    .NOTES
+        None.
+    #>
+    [CmdletBinding()]
+    param([string]$Name)
+    $Name
+}
+'@
+        }
     )
 }
 
@@ -78,5 +116,59 @@ Describe 'Custom analyzer rules' -Tag 'Static' {
         $hits = @(Get-RuleHit -Script $script -Rule 'Measure-AN002OutputTypeDeclared')
         $hits.Count | Should -Be 1
         $hits[0].Message | Should -Match "Function 'Get-Thing'"
+    }
+
+    It '<Rule> checks a script with a param block and skips a function inside it' -ForEach @(
+        @{ Rule = 'Measure-AN010StrictModeSet' }
+        @{ Rule = 'Measure-AN011CmdletBindingDeclared' }
+        @{ Rule = 'Measure-AN013HelpComplete' }
+    ) {
+        $script = 'param([string]$Name)' + [System.Environment]::NewLine + 'function Get-Inner { $Name }'
+        $hits = @(Get-RuleHit -Script $script -Rule $Rule)
+        $hits.Count | Should -Be 1
+        $hits[0].Message | Should -Match 'The script'
+    }
+
+    It '<Rule> skips a function defined inside another function' -ForEach @(
+        @{ Rule = 'Measure-AN010StrictModeSet' }
+        @{ Rule = 'Measure-AN011CmdletBindingDeclared' }
+        @{ Rule = 'Measure-AN013HelpComplete' }
+    ) {
+        $script = 'function Get-Outer { function Get-Inner { 1 } Get-Inner }'
+        $hits = @(Get-RuleHit -Script $script -Rule $Rule)
+        $hits.Count | Should -Be 1
+        $hits[0].Message | Should -Match "Function 'Get-Outer'"
+    }
+
+    It 'Measure-AN010StrictModeSet does not count settings made inside a try block' {
+        $script = "function Get-Thing { [CmdletBinding()] param() try { Set-StrictMode -Version Latest; `$ErrorActionPreference = 'Stop' } finally { } }"
+        @(Get-RuleHit -Script $script -Rule 'Measure-AN010StrictModeSet').Count | Should -Be 1
+    }
+
+    It 'Measure-AN012SuppressionJustified reports a blank Justification' {
+        $script = "function Get-Thing { [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = ' ')] [CmdletBinding()] param() }"
+        @(Get-RuleHit -Script $script -Rule 'Measure-AN012SuppressionJustified').Count | Should -Be 1
+    }
+
+    It 'Measure-AN013HelpComplete reports help that a prose line starting with a dot makes unreadable' {
+        $script = "function Get-Thing {`n    <#`n    .SYNOPSIS`n        Reads a file.`n    .DESCRIPTION`n        Reads a`n        .properties file.`n    .EXAMPLE`n        Get-Thing`n    .NOTES`n        None.`n    #>`n    [CmdletBinding()]`n    param()`n}"
+        $hits = @(Get-RuleHit -Script $script -Rule 'Measure-AN013HelpComplete')
+        $hits.Count | Should -Be 1
+        $hits[0].Message | Should -Match 'no help block that Get-Help can read'
+    }
+
+    It 'Measure-AN013HelpComplete reports script help written directly below #Requires' {
+        $script = "#Requires -Version 7.0`n<#`n.SYNOPSIS`n    Runs.`n.DESCRIPTION`n    Runs.`n.EXAMPLE`n    ./Run.ps1`n.NOTES`n    None.`n#>`n[CmdletBinding()]`nparam()"
+        @(Get-RuleHit -Script $script -Rule 'Measure-AN013HelpComplete').Count | Should -Be 1
+        $fixed = $script.Replace("7.0`n<#", "7.0`n`n<#")
+        @(Get-RuleHit -Script $fixed -Rule 'Measure-AN013HelpComplete').Count | Should -Be 0
+    }
+
+    It 'Measure-AN013HelpComplete names a missing and a stale parameter entry' {
+        $script = "function Get-Thing {`n    <#`n    .SYNOPSIS`n        Returns.`n    .DESCRIPTION`n        Returns.`n    .PARAMETER Old`n        Gone.`n    .EXAMPLE`n        Get-Thing`n    .NOTES`n        None.`n    #>`n    [CmdletBinding()]`n    param([string]`$Name)`n}"
+        $hits = @(Get-RuleHit -Script $script -Rule 'Measure-AN013HelpComplete')
+        $hits.Count | Should -Be 1
+        $hits[0].Message | Should -Match 'no \.PARAMETER for Name'
+        $hits[0].Message | Should -Match 'names no parameter: OLD'
     }
 }

@@ -104,7 +104,7 @@ gate proves it is current and passing, not that the run happened as recorded.
 | Context | Policy | Files to sign |
 |---|---|---|
 | Developer workstation | RemoteSigned | none for local clones |
-| Host that requires signed scripts | AllSigned | every `.ps1` in `Scripts/` and `Scripts/Lib/`, every `.psm1` in `Analyzer/Rules/` |
+| Host that requires signed scripts | AllSigned | every `.ps1` in `Scripts/`, `Scripts/Lib/` and `Analyzer/Lib/`, every `.psm1` in `Analyzer/Rules/` |
 
 Procedure: sign with `Set-AuthenticodeSignature -Certificate <code-signing cert>
 -TimestampServer <timestamp URL>`, then confirm with `Get-AuthenticodeSignature`. Sign

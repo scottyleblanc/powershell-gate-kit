@@ -1,4 +1,5 @@
 #Requires -Version 7.6
+
 <#
 .SYNOPSIS
     Builds the agent instruction file from the repository's standards files, for gate
