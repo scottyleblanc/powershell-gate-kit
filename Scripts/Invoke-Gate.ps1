@@ -15,7 +15,7 @@
       GK02 tools        PSScriptAnalyzer 1.25.0, gitleaks 8.30.1, Pester 5 and git
       GK03 analyzer     PSScriptAnalyzer with the kit's settings and rules over the
                         folders in Analyzer.Paths. A finding the repository's baseline
-                        does not hold fails (AN-001 to AN-009)
+                        does not hold fails (AN-001 to AN-017)
       GK04 static       The Pester tests in the StaticTests folder (ST-001)
       GK05 secrets      gitleaks over the working tree (SE-001)
       GK06 commits      gitleaks over every commit not yet on a remote (SE-002)
@@ -38,6 +38,8 @@
                         holds exactly the files its manifest's FileList names (PK-001)
       GK14 instructions Optional. The agent instruction file matches what
                         Export-AgentInstruction.ps1 builds from its sources (AG-001)
+      GK15 files        Optional. No file git tracks, or would track, holds a value
+                        that matches the message patterns (FP-001)
 
     "Not yet on a remote" means not reachable from any remote-tracking branch, as git
     last saw it. A branch never pushed has all its commits checked. A check with
@@ -771,6 +773,59 @@ else {
         "$instructionPath is out of date or cannot be built (AG-001)"
     }
     Add-Result -Id 'GK14' -Name 'instructions' -Passed ($instructionProblems.Count -eq 0) -Summary $summary -Detail @($instructionProblems)
+}
+
+# -- GK15 files --------------------------------------------------------------
+# FP-001: the message patterns GK07 applies to commit messages also hold for the files
+# a commit could carry: tracked files and untracked files that are not ignored. The
+# pattern file itself holds the patterns, so it is not scanned; nor is a binary file.
+
+if (-not $config.Checks.Files) {
+    Write-Off -Id 'GK15' -Name 'files' -Reason 'off in gate.config.psd1'
+}
+elseif ($null -eq $git) {
+    Add-Result -Id 'GK15' -Name 'files' -Passed $false -Summary 'not run: git is not on PATH'
+}
+else {
+    $filePatternFile = if ($config.MessagePatterns) { Resolve-GatePath -RepoRoot $repoRoot -RelativePath $config.MessagePatterns } else { Join-Path -Path $kitRoot -ChildPath 'Config' -AdditionalChildPath 'message-patterns.psd1' }
+    $filePatterns    = @((Import-PowerShellDataFile -LiteralPath $filePatternFile).Patterns)
+    $patternRelative = [System.IO.Path]::GetRelativePath($repoRoot, $filePatternFile).Replace('\', '/')
+
+    $listed = @(& $git.Source -C $repoRoot -c core.quotePath=false ls-files --cached --others --exclude-standard 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        Add-Result -Id 'GK15' -Name 'files' -Passed $false -Summary 'not run: git could not list the files'
+    }
+    else {
+        $listed   = @($listed | Where-Object { $PSItem -and $PSItem -ne $patternRelative } | Sort-Object -Unique)
+        $excluded = @(Select-GateChangedPath -Changed $listed -Inputs @($config.Files.Exclude))
+        $fileProblems = [System.Collections.Generic.List[string]]::new()
+        $scanned = 0
+
+        foreach ($relative in @($listed | Where-Object { $PSItem -notin $excluded })) {
+            $full = Join-Path -Path $repoRoot -ChildPath $relative
+            if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { continue }
+            $bytes = [System.IO.File]::ReadAllBytes($full)
+            if ([Array]::IndexOf($bytes, [byte]0, 0, [Math]::Min($bytes.Length, 8000)) -ge 0) { continue }
+            $scanned++
+            $text = [System.Text.Encoding]::UTF8.GetString($bytes)
+
+            foreach ($pattern in $filePatterns) {
+                foreach ($match in [regex]::Matches($text, $pattern.Pattern)) {
+                    if ($pattern.Allow -and $match.Value -match $pattern.Allow) { continue }
+                    $line = 1 + @([regex]::Matches($text.Substring(0, $match.Index), "`n")).Count
+                    $fileProblems.Add("${relative}:${line}: $($pattern.Title): $(Get-Prefix -Value $match.Value)")
+                }
+            }
+        }
+
+        $summary = if ($fileProblems.Count -eq 0) {
+            "no pattern matches in $scanned file(s)"
+        }
+        else {
+            "$($fileProblems.Count) pattern match(es) in $scanned file(s) (FP-001)"
+        }
+        Add-Result -Id 'GK15' -Name 'files' -Passed ($fileProblems.Count -eq 0) -Summary $summary -Detail @($fileProblems)
+    }
 }
 
 # -- Summary -----------------------------------------------------------------

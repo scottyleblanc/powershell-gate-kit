@@ -8,6 +8,17 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Added
 
+- Custom analyzer rule AN-017 (DEC-016): a verbose message written as a string starts
+  with `[Name]`, the command that writes it.
+- Optional check GK15 files (FP-001, DEC-017), off by default: no file git tracks, or
+  would track, holds a value that matches the message patterns. `Files.Exclude` names
+  files and folders to skip; the pattern file and binary files are not scanned.
+- Custom analyzer rules AN-014 to AN-016 (DEC-015). In a command that declares
+  `SupportsShouldProcess`, every cmdlet call that accepts `-WhatIf` has a preview
+  decision (AN-014). Every parameter of a function under a `Public` folder has a
+  `[Validate*]` attribute, except switches and credential types (AN-015). Every
+  `.ps1` and `.psm1` file has `#Requires -Version` (AN-016). A repository upgrading
+  the kit sees each gap as a new GK03 finding; fix it, or hold it in the baseline.
 - Custom analyzer rules AN-010 to AN-013 (DEC-014). Every script with a param block,
   and every function not defined inside another function or such a script, sets
   strict mode and `$ErrorActionPreference = 'Stop'` in its own body (AN-010), declares

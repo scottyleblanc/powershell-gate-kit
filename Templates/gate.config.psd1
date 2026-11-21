@@ -14,6 +14,7 @@
         Evidence     = $false   # GK12, with -Base: a recorded run of tests CI cannot run
         Package      = $false   # GK13, with -Base: the module package holds only its FileList
         Instructions = $false   # GK14: AGENTS.md matches the standards it is built from
+        Files        = $false   # GK15: no file holds a value the message patterns match
     }
 
     # GK03. The folders analyzed, recursively. Files matching Exclude are skipped.
@@ -36,7 +37,7 @@
     # (tools/gate/Config/gitleaks.toml). Start from tools/gate/Templates/gitleaks.toml.
     Gitleaks = ''
 
-    # GK07. This repository's commit message patterns, or '' for the kit's default
+    # GK07 and GK15. This repository's message patterns, or '' for the kit's default
     # (tools/gate/Config/message-patterns.psd1). Start from
     # tools/gate/Templates/message-patterns.psd1.
     MessagePatterns = ''
@@ -95,5 +96,11 @@
         Output  = 'AGENTS.md'
         Title   = 'Agent instructions'
         Sources = @()      # for example @('docs/standards/coding.md', 'docs/standards/testing.md')
+    }
+
+    # GK15. Files and folders (ending in /) the file scan skips, such as test fixtures
+    # that hold sample values on purpose.
+    Files = @{
+        Exclude = @()      # for example @('tests/fixtures/')
     }
 }

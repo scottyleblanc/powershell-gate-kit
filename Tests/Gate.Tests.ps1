@@ -536,4 +536,53 @@ Describe 'Invoke-Gate' -Tag 'Static' {
             $result.ExitCode | Should -Be 1
         }
     }
+
+    Context 'GK15 files' {
+
+        BeforeAll {
+            # A private key header, built at run time so this file holds none.
+            $script:keyHeader = '-----BEGIN ' + 'RSA PRIVATE KEY-----'
+        }
+
+        It 'is off by default, and FP-001 fails a tracked and an untracked file that match a pattern' {
+            $repo = New-FixtureRepo -Name 'files' -Config $script:minimal
+            Set-FixtureFile -Repo $repo -Path 'docs/notes.md' -Text "Key:`n$script:keyHeader`n"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[OFF\]\s+GK15 files'
+
+            Set-FixtureFile -Repo $repo -Path 'gate.config.psd1' -Text "@{ SchemaVersion = 1; Checks = @{ Files = `$true } }"
+            $null = Save-FixtureCommit -Repo $repo -Message 'add notes'
+            Set-FixtureFile -Repo $repo -Path 'scratch.txt' -Text "$script:keyHeader`n"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'docs/notes.md:2: no private key block: -----B\*\*\*'
+            $result.Text | Should -Match 'scratch.txt:1: no private key block'
+            $result.Text | Should -Not -Match 'RSA PRIVATE'
+            $result.ExitCode | Should -Be 1
+        }
+
+        It 'FP-001 skips Files.Exclude, ignored files, binary files and the pattern file itself' {
+            $patterns = "@{ Patterns = @( @{ Id = 'CM-001'; Title = 'no internal host name'; Pattern = 'build-host-[0-9]+'; Allow = '' } ) }"
+            $config   = "@{ SchemaVersion = 1; Checks = @{ Files = `$true }; MessagePatterns = 'gate/patterns.psd1'; Files = @{ Exclude = @('fixtures/') } }"
+            $repo = New-FixtureRepo -Name 'filesskip' -Config $config
+            Set-FixtureFile -Repo $repo -Path 'gate/patterns.psd1' -Text "$patterns`n# example: build-host-12`n"
+            Set-FixtureFile -Repo $repo -Path 'fixtures/sample.txt' -Text "build-host-12`n"
+            Set-FixtureFile -Repo $repo -Path '.gitignore' -Text "out/`n"
+            Set-FixtureFile -Repo $repo -Path 'out/log.txt' -Text "build-host-12`n"
+            Set-FixtureFile -Repo $repo -Path 'data.bin' -Text "build-host-12`0`n"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[PASS\] GK15 files : no pattern matches'
+
+            Set-FixtureFile -Repo $repo -Path 'docs/setup.md' -Text "Run on build-host-12.`n"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'docs/setup.md:1: no internal host name: build-\*\*\*'
+            $result.ExitCode | Should -Be 1
+        }
+
+        It 'CF-004 fails a Files.Exclude path that leaves the repository' {
+            $repo   = New-FixtureRepo -Name 'filesbad' -Config "@{ SchemaVersion = 1; Checks = @{ Files = `$true }; Files = @{ Exclude = @('../other/') } }"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'CF-004'
+            $result.ExitCode | Should -Be 1
+        }
+    }
 }
