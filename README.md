@@ -13,7 +13,7 @@ agent instruction file in step with the standards it is built from. The same com
 and in CI, so a change that fails locally also fails the pull request.
 
 A repository takes the kit as a git subtree in its `tools/gate/` folder and configures
-it with one data file, `gate.config.psd1`, in its root folder.
+it with one data file, `gate.config.psd1`, in its root folder or in `Gate/`.
 
 ## Prerequisites
 
@@ -59,7 +59,10 @@ cp tools/gate/Templates/gate.config.psd1 gate.config.psd1
 ```
 
 `gate.config.psd1` in the target's root folder tells the gate where the code is and
-which optional checks to run. Every key is commented in the file. The kit also has a
+which optional checks to run. Every key is commented in the file. It can sit in
+`Gate/` instead, with the repository's other gate files, such as its baseline and
+gitleaks config; keep one copy only (DEC-018). Its paths are relative to the root
+either way. The kit also has a
 `tools/gate/gate.config.psd1`: that one configures the gate for the kit itself, and
 the gate in the target ignores it. Most repositories change two things in
 `gate.config.psd1`.
@@ -300,7 +303,7 @@ agent instruction file (default `AGENTS.md`).
 |---|---|
 | Version | unreleased (first tag pending) |
 | Last audit | not yet audited |
-| Tests | 155 static tests: 39 gate behaviour cases, 60 analyzer rule cases, 56 unbranded file checks |
+| Tests | 159 static tests: 43 gate behaviour cases, 60 analyzer rule cases, 56 unbranded file checks |
 | Open items | See [Docs/SECURITY.md](Docs/SECURITY.md#open-items) |
 
 ## Licence

@@ -25,6 +25,7 @@ $script:GateConfigDefault = [ordered]@{
     Analyzer        = [ordered]@{ Paths = @(); Exclude = @('*.Tests.ps1'); ExcludeRules = @(); ExcludeRulesByPath = @{}; Baseline = '' }
     StaticTests     = ''
     Gitleaks        = ''
+    GitleaksIgnore  = ''
     MessagePatterns = ''
     Permissions     = ''
     Review          = [ordered]@{ Record = 'Review/LastReview.json'; Exempt = @() }
@@ -117,13 +118,15 @@ function Resolve-GatePath {
 function Import-GateConfig {
     <#
     .SYNOPSIS
-        Reads gate.config.psd1 from the repository root and checks it (rules CF-001 to
-        CF-005).
+        Reads gate.config.psd1 from the repository root, or from Gate/ under it, and
+        checks it (rules CF-001 to CF-005).
     .DESCRIPTION
+        Reads the copy at the root, else the one at Gate/gate.config.psd1 (DEC-018).
         Starts from the defaults, overlays the keys the file sets, and lists every
-        problem found: a missing or unreadable file, an unknown key, a value of the
-        wrong shape, and a path that is absolute, leaves the repository or does not
-        exist.
+        problem found: no copy or a copy in both places, an unreadable file, an unknown
+        key, a value of the wrong shape, and a path that is absolute, leaves the
+        repository or does not exist. Paths in the file are relative to the repository
+        root wherever the file sits.
     .PARAMETER RepoRoot
         The repository root.
     .EXAMPLE
@@ -153,11 +156,18 @@ function Import-GateConfig {
         $config[$key] = if ($value -is [System.Collections.IDictionary]) { [ordered]@{} + $value } else { $value }
     }
 
-    $file = Join-Path -Path $RepoRoot -ChildPath 'gate.config.psd1'
-    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
-        $problems.Add('gate.config.psd1 is not at the repository root (CF-001)')
+    $atRoot = Join-Path -Path $RepoRoot -ChildPath 'gate.config.psd1'
+    $inGate = Join-Path -Path $RepoRoot -ChildPath 'Gate' -AdditionalChildPath 'gate.config.psd1'
+    $found  = @($atRoot, $inGate | Where-Object { Test-Path -LiteralPath $PSItem -PathType Leaf })
+    if ($found.Count -eq 0) {
+        $problems.Add('gate.config.psd1 is not at the repository root or in Gate/ (CF-001)')
         return [PSCustomObject]@{ Config = $config; Problems = @($problems) }
     }
+    if ($found.Count -gt 1) {
+        $problems.Add('gate.config.psd1 is both at the repository root and in Gate/; keep one (CF-001)')
+        return [PSCustomObject]@{ Config = $config; Problems = @($problems) }
+    }
+    $file = $found[0]
 
     # Import-PowerShellDataFile accepts only data: no command or expression runs.
     $read = $null
@@ -221,6 +231,7 @@ function Import-GateConfig {
         , @('Analyzer.Baseline', $config.Analyzer.Baseline, 'Leaf')
         , @('StaticTests', $config.StaticTests, 'Container')
         , @('Gitleaks', $config.Gitleaks, 'Leaf')
+        , @('GitleaksIgnore', $config.GitleaksIgnore, 'Leaf')
         , @('MessagePatterns', $config.MessagePatterns, 'Leaf')
         , @('Permissions', $config.Permissions, 'Leaf')
     )

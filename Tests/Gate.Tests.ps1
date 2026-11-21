@@ -84,6 +84,23 @@ Describe 'Invoke-Gate' -Tag 'Static' {
             $result.ExitCode | Should -Be 1
         }
 
+        It 'CF-001 reads gate.config.psd1 from Gate/ when the root has none' {
+            $repo = New-FixtureRepo -Name 'gateconfig' -NoConfig
+            Set-FixtureFile -Repo $repo -Path 'Gate/gate.config.psd1' -Text $script:minimal
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[PASS\] GK01 config'
+            $result.ExitCode | Should -Be 0
+        }
+
+        It 'CF-001 fails and stops when gate.config.psd1 is both at the root and in Gate/' {
+            $repo = New-FixtureRepo -Name 'twoconfigs' -Config $script:minimal
+            Set-FixtureFile -Repo $repo -Path 'Gate/gate.config.psd1' -Text $script:minimal
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'both at the repository root and in Gate/; keep one \(CF-001\)'
+            $result.Text | Should -Not -Match 'GK02'
+            $result.ExitCode | Should -Be 1
+        }
+
         It 'CF-003 fails an unknown key' {
             $repo   = New-FixtureRepo -Name 'unknownkey' -Config "@{ SchemaVersion = 1; Analyser = @{} }"
             $result = Invoke-FixtureGate -Repo $repo
@@ -197,6 +214,30 @@ Describe 'Invoke-Gate' -Tag 'Static' {
             $result = Invoke-FixtureGate -Repo $repo
             $result.Text | Should -Match '\[PASS\] GK05 secrets'
             $result.ExitCode | Should -Be 0
+        }
+
+        It 'SE-001 passes a finding whose fingerprint is in the file GitleaksIgnore names, and SE-002 reads it too' {
+            $repo  = New-FixtureRepo -Name 'ignoredgate' -Config "@{ SchemaVersion = 1; GitleaksIgnore = 'Gate/gitleaksignore' }"
+            $token = 'gh' + 'p_' + ('aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3z5A')
+            Set-FixtureFile -Repo $repo -Path 'notes.txt' -Text "token = $token`n"
+            Set-FixtureFile -Repo $repo -Path 'Gate/gitleaksignore' -Text "# fixture value, not a credential`nnotes.txt:github-pat:1`n"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[PASS\] GK05 secrets'
+            $result.ExitCode | Should -Be 0
+
+            $commit = Save-FixtureCommit -Repo $repo -Message 'add notes'
+            Set-FixtureFile -Repo $repo -Path 'Gate/gitleaksignore' -Text "# fixture value, not a credential`nnotes.txt:github-pat:1`n${commit}:notes.txt:github-pat:1`n"
+            $null   = Save-FixtureCommit -Repo $repo -Message 'ignore the fixture value in history'
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[PASS\] GK06 commits'
+            $result.ExitCode | Should -Be 0
+        }
+
+        It 'CF-004 fails a GitleaksIgnore that names no file' {
+            $repo   = New-FixtureRepo -Name 'ignoremissing' -Config "@{ SchemaVersion = 1; GitleaksIgnore = 'Gate/gitleaksignore' }"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match "GitleaksIgnore names 'Gate/gitleaksignore', which is not a file in the repository \(CF-004\)"
+            $result.ExitCode | Should -Be 1
         }
 
         It 'SE-002 fails a secret in an unpushed commit that a later commit removed' {

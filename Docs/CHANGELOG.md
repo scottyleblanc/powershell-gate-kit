@@ -8,6 +8,14 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Added
 
+- `gate.config.psd1` can sit in `Gate/` instead of the repository root (DEC-018).
+  GK01 reads whichever copy exists and fails CF-001 when there is a copy in both
+  places. Paths in the file stay relative to the root.
+- The `GitleaksIgnore` config key names the gitleaks ignore file, for example
+  `Gate/gitleaksignore`; left empty, gitleaks reads `.gitleaksignore` at the root, as
+  before (SE-001, DEC-018). GK05 to GK07 pass it to every gitleaks call, so GK06 and
+  GK07 now read the ignore file whatever folder the gate runs from.
+
 - Custom analyzer rule AN-017 (DEC-016): a verbose message written as a string starts
   with `[Name]`, the command that writes it.
 - Optional check GK15 files (FP-001, DEC-017), off by default: no file git tracks, or

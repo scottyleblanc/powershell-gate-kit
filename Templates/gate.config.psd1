@@ -1,8 +1,9 @@
 @{
-    # Gate configuration for this repository. Copy to the repository root as
-    # gate.config.psd1. Read by tools/gate/Scripts/Invoke-Gate.ps1 (check GK01, rules
-    # CF-001 to CF-005). Every path is relative to the repository root and uses /
-    # separators. A key left out takes the default shown here.
+    # Gate configuration for this repository. Copy to the repository root, or to Gate/
+    # beside the repository's other gate files, as gate.config.psd1; one copy only
+    # (DEC-018). Read by tools/gate/Scripts/Invoke-Gate.ps1 (check GK01, rules CF-001 to
+    # CF-005). Every path is relative to the repository root, wherever this file sits,
+    # and uses / separators. A key left out takes the default shown here.
 
     SchemaVersion = 1
 
@@ -36,6 +37,11 @@
     # GK05 to GK07. This repository's gitleaks config, or '' for the kit's default
     # (tools/gate/Config/gitleaks.toml). Start from tools/gate/Templates/gitleaks.toml.
     Gitleaks = ''
+
+    # GK05 to GK07. The file of gitleaks fingerprints to ignore, or '' for
+    # .gitleaksignore at the repository root. Fingerprints stay relative to the root
+    # wherever the file sits.
+    GitleaksIgnore = ''   # for example 'Gate/gitleaksignore'
 
     # GK07 and GK15. This repository's message patterns, or '' for the kit's default
     # (tools/gate/Config/message-patterns.psd1). Start from
