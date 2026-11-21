@@ -62,8 +62,11 @@
     Also run GK11, when gate.config.psd1 turns it on.
 
 .PARAMETER Quick
-    Skip GK03, the slowest check, and report it [OFF]. The pre-push hook passes it;
-    CI does not, so every pull request is still analyzed (DEC-011).
+    Skip the checks the Quick key in gate.config.psd1 lists, and report each [OFF].
+    The default list is GK03, the analyzer. Quick may list GK03, GK04, GK09, GK14 and
+    GK15; the config, tool, secret and permission checks always run. The pre-push hook
+    passes -Quick; CI does not, so every pull request runs every check (DEC-011,
+    DEC-020).
 
 .EXAMPLE
     pwsh -NoProfile -File ./tools/gate/Scripts/Invoke-Gate.ps1
@@ -73,7 +76,7 @@
 .EXAMPLE
     pwsh -NoProfile -File ./tools/gate/Scripts/Invoke-Gate.ps1 -Quick
 
-    Runs every check except GK03. This is what the pre-push hook runs.
+    Runs every check except those the Quick key lists. This is what the pre-push hook runs.
 
 .EXAMPLE
     pwsh -NoProfile -File ./tools/gate/Scripts/Invoke-Gate.ps1 -Unit -Base origin/main
@@ -172,6 +175,9 @@ if ($loaded.Problems.Count -gt 0) {
 $onList = @($config.Checks.Keys | Where-Object { $config.Checks[$PSItem] })
 Add-Result -Id 'GK01' -Name 'config' -Passed $true -Summary "valid; optional checks on: $(if ($onList.Count -gt 0) { $onList -join ', ' } else { 'none' })"
 
+# The checks this run skips: with -Quick, the ones the Quick key lists (DEC-020).
+$quickSkip = if ($Quick) { @($config.Quick) } else { @() }
+
 # -- GK02 tools --------------------------------------------------------------
 
 $analyzerModule  = Get-Module -Name PSScriptAnalyzer -ListAvailable | Where-Object { $PSItem.Version -eq $requiredAnalyzer } | Select-Object -First 1
@@ -197,7 +203,7 @@ Add-Result -Id 'GK02' -Name 'tools' -Passed ($toolProblems.Count -eq 0) -Summary
 # -- GK03 analyzer -----------------------------------------------------------
 
 $analysis = $null
-if ($Quick) {
+if ('GK03' -in $quickSkip) {
     Write-Off -Id 'GK03' -Name 'analyzer' -Reason 'skipped by -Quick; CI runs it'
 }
 elseif ($null -eq $analyzerModule) {
@@ -226,7 +232,10 @@ if ($null -ne $analysis) {
 
 # -- GK04 static -------------------------------------------------------------
 
-if (-not $config.StaticTests) {
+if ('GK04' -in $quickSkip) {
+    Write-Off -Id 'GK04' -Name 'static' -Reason 'skipped by -Quick; CI runs it'
+}
+elseif (-not $config.StaticTests) {
     Add-Result -Id 'GK04' -Name 'static' -Passed $true -Summary 'no static test folder configured; nothing to run'
 }
 elseif ($null -eq $pesterModule) {
@@ -394,6 +403,9 @@ Add-Result -Id 'GK08' -Name 'permissions' -Passed ($permissionProblems.Count -eq
 
 if (-not $config.Checks.Version) {
     Write-Off -Id 'GK09' -Name 'version' -Reason 'off in gate.config.psd1'
+}
+elseif ('GK09' -in $quickSkip) {
+    Write-Off -Id 'GK09' -Name 'version' -Reason 'skipped by -Quick; CI runs it'
 }
 else {
     $versionProblems = [System.Collections.Generic.List[string]]::new()
@@ -745,6 +757,9 @@ else {
 if (-not $config.Checks.Instructions) {
     Write-Off -Id 'GK14' -Name 'instructions' -Reason 'off in gate.config.psd1'
 }
+elseif ('GK14' -in $quickSkip) {
+    Write-Off -Id 'GK14' -Name 'instructions' -Reason 'skipped by -Quick; CI runs it'
+}
 else {
     $instructionPath = $config.Instructions.Output
     $instructionFile = Resolve-GatePath -RepoRoot $repoRoot -RelativePath $instructionPath
@@ -787,6 +802,9 @@ else {
 
 if (-not $config.Checks.Files) {
     Write-Off -Id 'GK15' -Name 'files' -Reason 'off in gate.config.psd1'
+}
+elseif ('GK15' -in $quickSkip) {
+    Write-Off -Id 'GK15' -Name 'files' -Reason 'skipped by -Quick; CI runs it'
 }
 elseif ($null -eq $git) {
     Add-Result -Id 'GK15' -Name 'files' -Passed $false -Summary 'not run: git is not on PATH'

@@ -126,7 +126,8 @@ waits minutes for it gets made with `--no-verify`, which skips the secret checks
 The secret checks must run before a commit leaves the machine; a new analyzer finding
 is caught at the pull request with nothing lost.
 
-The kit's own hook does not pass `-Quick`: the kit has no CI, so its hook is where GK03
+The kit's own hook passes `-Quick` too, and its GitHub workflow runs every check on
+each pull request (DEC-020). Before the workflow existed, the hook was where GK03
 runs on the kit (DEC-006).
 
 **Rules out:** dropping the hook, and a hook that runs only gitleaks outside the gate.
@@ -288,3 +289,29 @@ reach).
 
 **Enforced by:** the analyzer rule tests for AN-018, and the GK08 test that the two
 agent templates pass together.
+
+## DEC-020 — The hook's subset is configured, and the kit runs CI on itself
+
+The `Quick` key lists the checks `-Quick` skips, `GK03` by default. It may list GK03,
+GK04, GK09, GK14 and GK15. The kit's own hook passes `-Quick` with
+`Quick = @('GK03', 'GK04')`, and `.github/workflows/gate.yml` runs every check, with
+`-Base`, on each pull request into main.
+
+**Why:** which check is slow depends on the repository. On the kit, the static tests
+build throwaway repositories and take longer than the analyzer, so skipping only GK03
+still left a long push. A list in the config lets each repository move its slow
+checks to CI without changing the kit. The config, tool, secret and permission
+checks stay out of the list: a secret must be found before it leaves the machine, and
+the others are fast. The workflow runs on the kit's pull requests, so every check
+still runs before a merge.
+
+The kit's own config turns `Checks.Review` off. Its pull requests are reviewed by the
+maintainer, not by a recorded second-model review, so with the workflow passing
+`-Base`, GK10 would fail every one of them. Target repositories keep the default,
+on.
+
+**Rules out:** skipping GK01, GK02 or GK05 to GK08; GK10 to GK13 in the list, which
+the hook never runs (they need `-Base` or `-Unit`); a hook with no checks at all.
+
+**Enforced by:** the gate tests "skips every check the Quick key lists, and only with
+-Quick" and "CF-003 fails a Quick entry for a check that always runs".
