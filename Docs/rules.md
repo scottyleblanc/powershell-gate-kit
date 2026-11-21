@@ -29,8 +29,10 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 
 ## Config (GK01)
 
-- **CF-001** — The repository root holds `gate.config.psd1`, a PowerShell data file.
-  Example: a missing file fails GK01 and no other check runs.
+- **CF-001** — The repository holds one `gate.config.psd1`, a PowerShell data file, at
+  its root or in `Gate/` (DEC-018).
+  Example: a missing file fails GK01 and no other check runs; so does a copy in both
+  places.
 - **CF-002** — The config states `SchemaVersion = 1`.
   Example: `@{ SchemaVersion = 1 }` is the smallest valid config.
 - **CF-003** — The config holds only the keys in `Templates/gate.config.psd1`, each of
@@ -111,8 +113,9 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 
 - **SE-001** — gitleaks finds no secret in the working tree.
   Example: a token pasted into a notes file fails GK05 before it is committed.
-  A false positive listed in `.gitleaksignore` at the repository root, by its
-  relative-path fingerprint (`<file>:<rule>:<line>`), does not fail GK05.
+  A false positive listed in the ignore file by its relative-path fingerprint
+  (`<file>:<rule>:<line>`) does not fail GK05. The ignore file is `.gitleaksignore` at
+  the repository root, or the file `GitleaksIgnore` names (DEC-018).
 - **SE-002** — gitleaks finds no secret in any commit not yet on a remote, or, with
   `-Base`, any commit the branch adds.
   Example: a token committed and then deleted in a later commit still fails GK06.
