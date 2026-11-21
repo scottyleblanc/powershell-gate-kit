@@ -8,9 +8,12 @@
 
     # The optional checks. The core checks (GK01 to GK08) always run.
     Checks = @{
-        Review  = $true    # GK10, with -Base: the second-model review record
-        Version = $false   # GK09: one version everywhere, and the tag rule with -Base
-        Unit    = $false   # GK11, with -Unit: the repository's unit test script
+        Review       = $true    # GK10, with -Base: the second-model review record
+        Version      = $false   # GK09: one version everywhere, and the tag rule with -Base
+        Unit         = $false   # GK11, with -Unit: the repository's unit test script
+        Evidence     = $false   # GK12, with -Base: a recorded run of tests CI cannot run
+        Package      = $false   # GK13, with -Base: the module package holds only its FileList
+        Instructions = $false   # GK14: AGENTS.md matches the standards it is built from
     }
 
     # GK03. The folders analyzed, recursively. Files matching Exclude are skipped.
@@ -43,7 +46,7 @@
     Permissions = ''
 
     # GK10. Record is the file Invoke-ModelReview.ps1 writes. Exempt lists files whose
-    # change alone needs no review, such as a test-evidence file committed last.
+    # change alone needs no review. The evidence record (GK12) is exempt already.
     Review = @{
         Record = 'Review/LastReview.json'
         Exempt = @()
@@ -65,5 +68,32 @@
     # its own coverage floor.
     Unit = @{
         Script = ''
+    }
+
+    # GK12. Script runs the tests CI cannot run (for example integration tests against
+    # a local database) and exits 0 only when they pass. Invoke-EvidenceRun.ps1 runs it
+    # and writes Record. When a branch changes a Paths entry (a file, or a folder ending
+    # in /), the record must show a passing run on a clean tree, with nothing but the
+    # evidence and review records changed after it.
+    Evidence = @{
+        Script = ''        # for example 'scripts/Invoke-IntegrationTest.ps1'
+        Record = 'Evidence/LastRun.json'
+        Paths  = @()       # for example @('source/')
+    }
+
+    # GK13. Manifest is the module manifest as it is published; its FileList must name
+    # every file in its folder. Build is a script that writes that folder first, or ''
+    # when the manifest is in the source tree.
+    Package = @{
+        Manifest = ''      # for example 'source/MyModule/MyModule.psd1'
+        Build    = ''      # for example 'scripts/Build-Module.ps1'
+    }
+
+    # GK14. Export-AgentInstruction.ps1 joins Sources, in order, into Output under a
+    # header titled Title.
+    Instructions = @{
+        Output  = 'AGENTS.md'
+        Title   = 'Agent instructions'
+        Sources = @()      # for example @('docs/standards/coding.md', 'docs/standards/testing.md')
     }
 }

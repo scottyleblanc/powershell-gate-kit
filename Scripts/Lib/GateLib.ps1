@@ -1,12 +1,13 @@
 #Requires -Version 7.6
 <#
 .SYNOPSIS
-    Helpers shared by Invoke-Gate.ps1 and Update-AnalyzerBaseline.ps1.
+    Helpers shared by Invoke-Gate.ps1 and the other scripts in Scripts\.
 
 .DESCRIPTION
     Reads and checks gate.config.psd1 (rules CF-001 to CF-005), resolves the paths it
-    names, runs PSScriptAnalyzer with the kit's settings and rules, and reads the
-    analyzer baseline (AN-001).
+    names, runs PSScriptAnalyzer with the kit's settings and rules, reads the analyzer
+    baseline (AN-001), matches changed paths against config paths, and builds the
+    agent instruction file (AG-001).
 
 .NOTES
     **Invocation:** lib helper — dot-sourced by the scripts in Scripts\. Defines
@@ -20,7 +21,7 @@ $ErrorActionPreference = 'Stop'
 # the default; a key not listed here fails CF-003.
 $script:GateConfigDefault = [ordered]@{
     SchemaVersion   = 1
-    Checks          = [ordered]@{ Review = $true; Version = $false; Unit = $false }
+    Checks          = [ordered]@{ Review = $true; Version = $false; Unit = $false; Evidence = $false; Package = $false; Instructions = $false }
     Analyzer        = [ordered]@{ Paths = @(); Exclude = @('*.Tests.ps1'); ExcludeRules = @(); ExcludeRulesByPath = @{}; Baseline = '' }
     StaticTests     = ''
     Gitleaks        = ''
@@ -29,6 +30,9 @@ $script:GateConfigDefault = [ordered]@{
     Review          = [ordered]@{ Record = 'Review/LastReview.json'; Exempt = @() }
     Version         = [ordered]@{ Manifest = ''; Changelog = ''; NotesFiles = @(); TagPrefix = 'v'; PackageInputs = @() }
     Unit            = [ordered]@{ Script = '' }
+    Evidence        = [ordered]@{ Script = ''; Record = 'Evidence/LastRun.json'; Paths = @() }
+    Package         = [ordered]@{ Manifest = ''; Build = '' }
+    Instructions    = [ordered]@{ Output = 'AGENTS.md'; Title = 'Agent instructions'; Sources = @() }
 }
 
 function Get-GateRepoRoot {
@@ -217,6 +221,31 @@ function Import-GateConfig {
     if ($config.Checks.Review -and -not $config.Review.Record) {
         $problems.Add('gate.config.psd1: Checks.Review is on, so Review.Record must name a file (CF-005)')
     }
+    # The evidence record, like the review record, is added by a branch later.
+    $resolveOnly = [System.Collections.Generic.List[string]]::new()
+    if ($config.Checks.Evidence) {
+        if (-not $config.Evidence.Script) { $problems.Add('gate.config.psd1: Checks.Evidence is on, so Evidence.Script must name a script (CF-005)') }
+        else { $mustExist.Add(@('Evidence.Script', $config.Evidence.Script, 'Leaf')) }
+        if (-not $config.Evidence.Record) { $problems.Add('gate.config.psd1: Checks.Evidence is on, so Evidence.Record must name a file (CF-005)') }
+        else { $resolveOnly.Add([string]$config.Evidence.Record) }
+        if (@($config.Evidence.Paths | Where-Object { $PSItem }).Count -eq 0) { $problems.Add('gate.config.psd1: Checks.Evidence is on, so Evidence.Paths must list one or more paths (CF-005)') }
+        foreach ($path in @($config.Evidence.Paths)) { if ($path) { $resolveOnly.Add([string]$path) } }
+    }
+    if ($config.Checks.Package) {
+        # A manifest that a build script writes need not exist until the build runs.
+        if (-not $config.Package.Manifest) { $problems.Add('gate.config.psd1: Checks.Package is on, so Package.Manifest must name the module manifest (CF-005)') }
+        elseif ($config.Package.Build) { $resolveOnly.Add([string]$config.Package.Manifest) }
+        else { $mustExist.Add(@('Package.Manifest', $config.Package.Manifest, 'Leaf')) }
+        if ($config.Package.Manifest -and -not ([string]$config.Package.Manifest).EndsWith('.psd1')) { $problems.Add('gate.config.psd1: Package.Manifest must name a .psd1 file (CF-005)') }
+        if ($config.Package.Build) { $mustExist.Add(@('Package.Build', $config.Package.Build, 'Leaf')) }
+    }
+    if ($config.Checks.Instructions) {
+        if (@($config.Instructions.Sources | Where-Object { $PSItem }).Count -eq 0) { $problems.Add('gate.config.psd1: Checks.Instructions is on, so Instructions.Sources must list one or more files (CF-005)') }
+        foreach ($path in @($config.Instructions.Sources)) { $mustExist.Add(@('Instructions.Sources', $path, 'Leaf')) }
+        if (-not $config.Instructions.Output) { $problems.Add('gate.config.psd1: Checks.Instructions is on, so Instructions.Output must name a file (CF-005)') }
+        else { $resolveOnly.Add([string]$config.Instructions.Output) }
+        if ($config.Instructions.Title -isnot [string] -or -not $config.Instructions.Title) { $problems.Add('gate.config.psd1: Instructions.Title must be a non-empty string (CF-005)') }
+    }
 
     foreach ($entry in $mustExist) {
         try {
@@ -230,7 +259,7 @@ function Import-GateConfig {
             $problems.Add("gate.config.psd1: $($entry[0]): $($PSItem.Exception.Message -replace '^\[Resolve-GatePath\] ', '')")
         }
     }
-    foreach ($path in @($config.Review.Exempt) + @($config.Review.Record) + @($config.Version.PackageInputs)) {
+    foreach ($path in @($config.Review.Exempt) + @($config.Review.Record) + @($config.Version.PackageInputs) + @($resolveOnly)) {
         if (-not $path) { continue }
         try { $null = Resolve-GatePath -RepoRoot $RepoRoot -RelativePath ([string]$path) }
         catch { $problems.Add("gate.config.psd1: $($PSItem.Exception.Message -replace '^\[Resolve-GatePath\] ', '')") }
@@ -372,4 +401,149 @@ function Compare-AnalyzerBaseline {
     }
 
     [PSCustomObject]@{ New = @($new); Held = $held; Shrinkable = @($shrinkable) }
+}
+
+function Select-GateChangedPath {
+    <#
+    .SYNOPSIS
+        Returns the changed paths that a list of config paths covers.
+    .PARAMETER Changed
+        Repository-relative paths, as git diff --name-only prints them.
+    .PARAMETER Inputs
+        Config paths: a file, or a folder ending in / that covers everything under it.
+    .OUTPUTS
+        System.String. Each changed path that an input covers.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
+        [string[]]$Changed,
+
+        [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
+        [string[]]$Inputs
+    )
+
+    Set-StrictMode -Version Latest
+    $ErrorActionPreference = 'Stop'
+
+    foreach ($path in @($Changed | Where-Object { $PSItem })) {
+        $covered = @($Inputs | Where-Object { $PSItem -and ($path -eq $PSItem -or ($PSItem.EndsWith('/') -and $path.StartsWith($PSItem))) })
+        if ($covered.Count -gt 0) { $path }
+    }
+}
+
+function Get-GateAgentInstruction {
+    <#
+    .SYNOPSIS
+        Builds the agent instruction file from the files Instructions.Sources lists
+        (rule AG-001).
+    .DESCRIPTION
+        Joins the source files in the listed order under a generated header. Each
+        file's first-level title becomes a second-level heading followed by a Source
+        line, and its other headings move down one level. A relative link is rewritten
+        to resolve from the repository root, where the output file sits. Text inside
+        code fences is carried unchanged.
+    .PARAMETER RepoRoot
+        The repository root.
+    .PARAMETER KitPath
+        The kit's folder relative to the repository root, as './tools/gate', or '.'
+        when the repository is the kit itself.
+    .PARAMETER Config
+        The config from Import-GateConfig.
+    .OUTPUTS
+        System.String. The file's text, with LF line endings and a final newline.
+        Throws when a source file has no first-level title or an unclosed code fence.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('Measure-AN006PathWithJoinPath', '', Justification = 'A Markdown link target is joined with / on every platform; it is a URL, not a file system path.')]
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$RepoRoot,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$KitPath,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNull()]
+        [System.Collections.IDictionary]$Config
+    )
+
+    Set-StrictMode -Version Latest
+    $ErrorActionPreference = 'Stop'
+
+    $out = [System.Collections.Generic.List[string]]::new()
+    $out.Add("# $($Config.Instructions.Title)")
+    $out.Add('')
+    $out.Add("Generated by ``$KitPath/Scripts/Export-AgentInstruction.ps1`` from the files listed")
+    $out.Add('under `Instructions.Sources` in `gate.config.psd1`. Do not edit it by hand: change')
+    $out.Add('a source file, then run the script again. Gate check GK14 fails when this file does')
+    $out.Add('not match its sources.')
+    $out.Add('')
+    $out.Add('## Checking your work')
+    $out.Add('')
+    $out.Add("Run ``pwsh -NoProfile -File $KitPath/Scripts/Invoke-Gate.ps1`` before you report a")
+    $out.Add('change as done. A change is done only when every check passes.')
+
+    foreach ($source in @($Config.Instructions.Sources)) {
+        $full  = Resolve-GatePath -RepoRoot $RepoRoot -RelativePath $source
+        $lines = @(([System.IO.File]::ReadAllText($full) -replace "`r`n", "`n").TrimEnd() -split "`n")
+        # The folder the source sits in, as path segments from the root.
+        $folder = @($source.Split('/') | Where-Object { $PSItem -and $PSItem -ne '.' })
+        $folder = if ($folder.Count -gt 1) { @($folder[0..($folder.Count - 2)]) } else { @() }
+
+        $rewrite = {
+            param([System.Text.RegularExpressions.Match]$Match)
+            $target = $Match.Groups[1].Value
+            # Absolute URLs, mail links, anchors and rooted paths stay as they are.
+            if ($target -match '^([A-Za-z][A-Za-z0-9+.-]*:|#|/)') { return $Match.Value }
+            $fragment = ''
+            $hash = $target.IndexOf('#')
+            if ($hash -ge 0) { $fragment = $target.Substring($hash); $target = $target.Substring(0, $hash) }
+            $stack = [System.Collections.Generic.List[string]]::new()
+            foreach ($segment in @($folder) + @($target.Split('/'))) {
+                if (-not $segment -or $segment -eq '.') { continue }
+                if ($segment -eq '..') {
+                    # A link that climbs above the root is left for review to catch.
+                    if ($stack.Count -eq 0) { return $Match.Value }
+                    $stack.RemoveAt($stack.Count - 1)
+                }
+                else { $stack.Add($segment) }
+            }
+            ']({0}{1})' -f ($stack -join '/'), $fragment
+        }
+
+        $inFence = $false
+        $seenH1  = $false
+        $out.Add('')
+        foreach ($line in $lines) {
+            if ($line -match '^\s*```') {
+                $inFence = -not $inFence
+                $out.Add($line)
+                continue
+            }
+            if ($inFence) {
+                $out.Add($line)
+                continue
+            }
+            if (-not $seenH1 -and $line -match '^# (.+)$') {
+                $seenH1 = $true
+                $out.Add("## $($Matches[1])")
+                $out.Add('')
+                $out.Add("Source: ``$source``.")
+                continue
+            }
+            if ($line -match '^#{1,5} ') { $line = "#$line" }
+            $out.Add([regex]::Replace($line, '\]\(([^)\s]+)\)', $rewrite))
+        }
+        if (-not $seenH1) { throw "[Get-GateAgentInstruction] '$source' has no first-level title (AG-001)." }
+        if ($inFence) { throw "[Get-GateAgentInstruction] '$source' has an unclosed code fence (AG-001)." }
+    }
+
+    ($out -join "`n") + "`n"
 }

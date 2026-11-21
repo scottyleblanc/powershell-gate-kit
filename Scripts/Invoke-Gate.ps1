@@ -30,6 +30,13 @@
                         covers the branch and every finding is answered (RV-001)
       GK11 unit         Optional; only with -Unit. The repository's unit test script
                         passes (UT-001)
+      GK12 evidence     Optional; only with -Base. When a file under Evidence.Paths
+                        changed, the committed evidence record shows a passing run of
+                        Evidence.Script on a clean tree, current for HEAD (EV-001)
+      GK13 package      Optional; only with -Base. The package built from the module
+                        holds exactly the files its manifest's FileList names (PK-001)
+      GK14 instructions Optional. The agent instruction file matches what
+                        Export-AgentInstruction.ps1 builds from its sources (AG-001)
 
     "Not yet on a remote" means not reachable from any remote-tracking branch, as git
     last saw it. A branch never pushed has all its commits checked. A check with
@@ -37,7 +44,8 @@
 
     In CI every commit is already on a remote, so "not yet on a remote" would check
     nothing. -Base names the branch a pull request merges into; with it, GK06 and GK07
-    check the commits in Base..HEAD instead, GK09 also checks the tags, and GK10 runs.
+    check the commits in Base..HEAD instead, GK09 also checks the tags, and GK10, GK12
+    and GK13 run.
 
     Found values are never printed in full: gitleaks runs with --redact, and a pattern
     match shows only its first characters.
@@ -167,6 +175,8 @@ $pesterModule    = Get-Module -Name Pester -ListAvailable | Where-Object { $PSIt
 $gitleaks        = Get-Command -Name gitleaks -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 $gitleaksVersion = if ($null -ne $gitleaks) { ((& $gitleaks.Source version) | Select-Object -First 1).Trim() } else { $null }
 $git             = Get-Command -Name git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+# GK13 packages with Compress-PSResource, which PowerShell 7.6 ships in PSResourceGet.
+$compress        = if ($config.Checks.Package) { Get-Command -Name Compress-PSResource -ErrorAction SilentlyContinue | Select-Object -First 1 } else { $null }
 
 $toolProblems = @(
     if ($null -eq $analyzerModule) { "PSScriptAnalyzer $requiredAnalyzer is not installed: run $kitPath/Scripts/Install-GateTool.ps1" }
@@ -174,8 +184,10 @@ $toolProblems = @(
     if ($null -eq $gitleaks) { "gitleaks is not on PATH: run $kitPath/Scripts/Install-GateTool.ps1" }
     elseif ($gitleaksVersion -ne $requiredGitleaks) { "gitleaks $gitleaksVersion found; $requiredGitleaks is required" }
     if ($null -eq $git) { 'git is not on PATH' }
+    if ($config.Checks.Package -and $null -eq $compress) { 'Compress-PSResource is not available: Checks.Package needs Microsoft.PowerShell.PSResourceGet 1.1 or later' }
 )
 $toolSummary = if ($toolProblems.Count -eq 0) { "PSScriptAnalyzer $requiredAnalyzer, gitleaks $requiredGitleaks, Pester $($pesterModule.Version), git" } else { "$($toolProblems.Count) missing or wrong version" }
+if ($toolProblems.Count -eq 0 -and $null -ne $compress) { $toolSummary += ", PSResourceGet $($compress.Version)" }
 Add-Result -Id 'GK02' -Name 'tools' -Passed ($toolProblems.Count -eq 0) -Summary $toolSummary -Detail $toolProblems
 
 # -- GK03 analyzer -----------------------------------------------------------
@@ -408,11 +420,7 @@ else {
                     $versionProblems.Add("git could not list the files changed since $Base (VR-002)")
                 }
                 else {
-                    $inputs = @($config.Version.PackageInputs)
-                    $hit = @($changedOut | Where-Object {
-                            $changedPath = $PSItem
-                            @($inputs | Where-Object { $changedPath -eq $PSItem -or ($PSItem.EndsWith('/') -and $changedPath.StartsWith($PSItem)) }).Count -gt 0
-                        })
+                    $hit = @(Select-GateChangedPath -Changed $changedOut -Inputs @($config.Version.PackageInputs))
                     if ($hit.Count -gt 0) {
                         $versionProblems.Add("a package input changed since $Base but $prefix$moduleVersion is already released: bump the version (VR-002)")
                         foreach ($path in $hit) { $versionProblems.Add("  changed: $path") }
@@ -435,8 +443,9 @@ else {
 }
 
 # -- GK10 review, only with -Base --------------------------------------------
-# RV-001: when the branch changes any file other than the review record and the files
-# listed in Review.Exempt, the record at HEAD shows a completed review of a commit the
+# RV-001: when the branch changes any file other than the review record, the evidence
+# record (with Checks.Evidence on) and the files listed in Review.Exempt, the record at
+# HEAD shows a completed review of a commit the
 # branch adds, from the merge base with Base or an older one, and every finding has a
 # Response that starts with Fixed:, Rejected:, Accepted: or Deferred:.
 
@@ -451,7 +460,8 @@ elseif ($null -ne $notReady) {
 }
 else {
     $reviewPath  = $config.Review.Record
-    $exemptFiles = @(@($reviewPath) + @($config.Review.Exempt) | Where-Object { $PSItem })
+    $evidenceRecord = if ($config.Checks.Evidence) { $config.Evidence.Record } else { '' }
+    $exemptFiles    = @(@($reviewPath) + @($evidenceRecord) + @($config.Review.Exempt) | Where-Object { $PSItem })
     $mergeBase   = @(& $git.Source -C $repoRoot merge-base $baseCommit HEAD 2>$null) | Select-Object -First 1
     $diffOut     = @(& $git.Source -C $repoRoot diff --name-only "$baseCommit...HEAD" 2>$null)
     $diffExit    = $LASTEXITCODE
@@ -549,6 +559,207 @@ else {
     if ($run.ExitCode -ne 0 -and $failed.Count -eq 0) { $failed = @($run.Output | Select-Object -Last 5) }
     $summary = if ($run.ExitCode -eq 0) { "$($config.Unit.Script) passed" } else { "$($config.Unit.Script) failed (exit $($run.ExitCode))" }
     Add-Result -Id 'GK11' -Name 'unit' -Passed ($run.ExitCode -eq 0) -Summary $summary -Detail $failed
+}
+
+# -- GK12 evidence, only with -Base ------------------------------------------
+# EV-001: when the branch changes a path that Evidence.Paths covers, the record at HEAD
+# shows Evidence = true from a run of Evidence.Script, on a commit in HEAD's history,
+# and no file other than the evidence and review records changed after that commit.
+
+if (-not $config.Checks.Evidence) {
+    Write-Off -Id 'GK12' -Name 'evidence' -Reason 'off in gate.config.psd1'
+}
+elseif (-not $Base) {
+    Write-Off -Id 'GK12' -Name 'evidence' -Reason 'runs only with -Base'
+}
+elseif ($null -ne $notReady) {
+    Add-Result -Id 'GK12' -Name 'evidence' -Passed $false -Summary $notReady
+}
+else {
+    $evidencePath = $config.Evidence.Record
+    $changedOut   = @(& $git.Source -C $repoRoot diff --name-only "$baseCommit...HEAD" 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        # Fail closed: a check that cannot see the change does not pass it.
+        Add-Result -Id 'GK12' -Name 'evidence' -Passed $false -Summary "not run: git could not list the files changed since $Base"
+    }
+    elseif (@(Select-GateChangedPath -Changed $changedOut -Inputs @($config.Evidence.Paths)).Count -eq 0) {
+        Add-Result -Id 'GK12' -Name 'evidence' -Passed $true -Summary "nothing under Evidence.Paths changed since $Base; no evidence needed"
+    }
+    else {
+        $evidenceProblems = [System.Collections.Generic.List[string]]::new()
+        $json = (& $git.Source -C $repoRoot show "HEAD:$evidencePath" 2>$null) -join "`n"
+        $run  = $null
+        if ($LASTEXITCODE -ne 0 -or -not $json) {
+            $evidenceProblems.Add("$evidencePath is not in HEAD: run $kitPath/Scripts/Invoke-EvidenceRun.ps1 and commit the record")
+        }
+        else {
+            try { $run = $json | ConvertFrom-Json } catch { $evidenceProblems.Add("$evidencePath is not valid JSON") }
+        }
+        $runCommit = ''
+        if ($null -ne $run) {
+            $names     = @($run.PSObject.Properties.Name)
+            $runCommit = if ($names -contains 'Commit') { "$($run.Commit)" } else { '' }
+            if (-not ($names -contains 'SchemaVersion' -and $run.SchemaVersion -eq 1)) {
+                $evidenceProblems.Add("$evidencePath is not schema version 1")
+            }
+            if (-not ($names -contains 'Script' -and "$($run.Script)" -eq $config.Evidence.Script)) {
+                $evidenceProblems.Add("$evidencePath is not from a run of $($config.Evidence.Script)")
+            }
+            if (-not ($names -contains 'Evidence' -and $run.Evidence -eq $true)) {
+                $evidenceProblems.Add("$evidencePath does not show Evidence = true: the run failed or the working tree was not clean")
+            }
+            if ($runCommit -notmatch '^[0-9a-f]{40}$') {
+                $evidenceProblems.Add("$evidencePath names no commit")
+            }
+            else {
+                $null = & $git.Source -C $repoRoot merge-base --is-ancestor $runCommit HEAD 2>$null
+                if ($LASTEXITCODE -ne 0) {
+                    $evidenceProblems.Add("the run's commit $($runCommit.Substring(0, 7)) is not in HEAD's history")
+                }
+                else {
+                    $sinceOut = @(& $git.Source -C $repoRoot diff --name-only $runCommit HEAD 2>$null)
+                    if ($LASTEXITCODE -ne 0) {
+                        $evidenceProblems.Add("git could not list the files changed since the run's commit $($runCommit.Substring(0, 7))")
+                    }
+                    # The records describe the run and the review; they change no code.
+                    $records = @($evidencePath, $config.Review.Record)
+                    foreach ($path in @($sinceOut | Where-Object { $PSItem -and $records -notcontains $PSItem })) {
+                        $evidenceProblems.Add("changed after the run's commit $($runCommit.Substring(0, 7)): $path")
+                    }
+                }
+            }
+        }
+        $summary = if ($evidenceProblems.Count -eq 0) {
+            "Evidence.Paths changed; $evidencePath is current for $($runCommit.Substring(0, 7))"
+        }
+        else {
+            'Evidence.Paths changed; the evidence is missing, failed or stale (EV-001)'
+        }
+        Add-Result -Id 'GK12' -Name 'evidence' -Passed ($evidenceProblems.Count -eq 0) -Summary $summary -Detail @($evidenceProblems)
+    }
+}
+
+# -- GK13 package, only with -Base -------------------------------------------
+# PK-001: the package built from the module holds exactly the files its manifest's
+# FileList names. [SEC] Compress-PSResource and Publish-PSResource package every file in
+# the module folder whatever FileList says, so a stray file would otherwise ship. The
+# package is built in a temporary folder that is deleted afterwards; nothing is
+# published.
+
+if (-not $config.Checks.Package) {
+    Write-Off -Id 'GK13' -Name 'package' -Reason 'off in gate.config.psd1'
+}
+elseif (-not $Base) {
+    Write-Off -Id 'GK13' -Name 'package' -Reason 'runs only with -Base'
+}
+elseif ($null -eq $compress) {
+    Add-Result -Id 'GK13' -Name 'package' -Passed $false -Summary 'not run: Compress-PSResource is not available'
+}
+else {
+    $packageProblems = [System.Collections.Generic.List[string]]::new()
+    $packageSummary  = ''
+    if ($config.Package.Build) {
+        $build = Invoke-ChildScript -Script (Resolve-GatePath -RepoRoot $repoRoot -RelativePath $config.Package.Build)
+        if ($build.ExitCode -ne 0) {
+            $packageSummary = "$($config.Package.Build) failed (exit $($build.ExitCode))"
+            foreach ($line in @($build.Output | Select-Object -Last 5)) { $packageProblems.Add($line) }
+        }
+    }
+    $manifest = Resolve-GatePath -RepoRoot $repoRoot -RelativePath $config.Package.Manifest
+    if ($packageProblems.Count -eq 0 -and -not (Test-Path -LiteralPath $manifest -PathType Leaf)) {
+        $packageProblems.Add("$($config.Package.Manifest) is not a file")
+    }
+    $listed = @()
+    if ($packageProblems.Count -eq 0) {
+        $data = Import-PowerShellDataFile -LiteralPath $manifest
+        if (-not $data.ContainsKey('FileList') -or @($data.FileList).Count -eq 0) {
+            $packageProblems.Add("$($config.Package.Manifest) has no FileList: without one, every file in the module folder ships")
+        }
+        else {
+            $listed = @($data.FileList | ForEach-Object { ([string]$PSItem).Replace('\', '/') })
+        }
+    }
+    if ($packageProblems.Count -eq 0) {
+        $moduleName = [System.IO.Path]::GetFileNameWithoutExtension($manifest)
+        $work       = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "gate-package-$([guid]::NewGuid().ToString('N'))"
+        $null       = New-Item -Path $work -ItemType Directory
+        try {
+            Compress-PSResource -Path (Split-Path -Path $manifest -Parent) -DestinationPath $work -ErrorAction Stop
+            $nupkg = @(Get-ChildItem -LiteralPath $work -Filter '*.nupkg') | Select-Object -First 1
+            if ($null -eq $nupkg) {
+                $packageProblems.Add('Compress-PSResource wrote no .nupkg')
+            }
+            else {
+                Add-Type -AssemblyName System.IO.Compression.FileSystem
+                $zip = [System.IO.Compression.ZipFile]::OpenRead($nupkg.FullName)
+                try {
+                    # [SEC] Leave out only the entries NuGet adds itself; every other entry is
+                    # a module file and is compared with FileList.
+                    $metadata = "^(\[Content_Types\]\.xml|_rels/\.rels|$([regex]::Escape($moduleName))\.nuspec|package/services/metadata/core-properties/[0-9a-f]+\.psmdcp)$"
+                    $packaged = @($zip.Entries |
+                            Where-Object { -not $PSItem.FullName.EndsWith('/') -and $PSItem.FullName -notmatch $metadata } |
+                            ForEach-Object { [uri]::UnescapeDataString($PSItem.FullName) } |
+                            Sort-Object)
+                }
+                finally {
+                    $zip.Dispose()
+                }
+                foreach ($file in @($packaged | Where-Object { $listed -notcontains $PSItem })) { $packageProblems.Add("not in FileList: $file") }
+                foreach ($file in @($listed | Where-Object { $packaged -notcontains $PSItem })) { $packageProblems.Add("in FileList, not in the package: $file") }
+                if ($packageProblems.Count -eq 0) { $packageSummary = "$($nupkg.Name) holds the $($packaged.Count) files FileList names" }
+            }
+        }
+        catch {
+            $packageProblems.Add("Compress-PSResource failed: $($PSItem.Exception.Message)")
+        }
+        finally {
+            Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+    if ($packageProblems.Count -gt 0 -and -not $packageSummary) { $packageSummary = 'the package does not match FileList (PK-001)' }
+    Add-Result -Id 'GK13' -Name 'package' -Passed ($packageProblems.Count -eq 0) -Summary $packageSummary -Detail @($packageProblems)
+}
+
+# -- GK14 instructions -------------------------------------------------------
+# AG-001: the agent instruction file is what Export-AgentInstruction.ps1 builds from the
+# files Instructions.Sources lists, so an agent reads the rules as they stand.
+
+if (-not $config.Checks.Instructions) {
+    Write-Off -Id 'GK14' -Name 'instructions' -Reason 'off in gate.config.psd1'
+}
+else {
+    $instructionPath = $config.Instructions.Output
+    $instructionFile = Resolve-GatePath -RepoRoot $repoRoot -RelativePath $instructionPath
+    $instructionProblems = [System.Collections.Generic.List[string]]::new()
+    $expected = $null
+    try {
+        $expected = Get-GateAgentInstruction -RepoRoot $repoRoot -KitPath $kitPath -Config $config
+    }
+    catch {
+        $instructionProblems.Add(($PSItem.Exception.Message -replace '^\[Get-GateAgentInstruction\] ', ''))
+    }
+    if ($null -ne $expected) {
+        if (-not (Test-Path -LiteralPath $instructionFile -PathType Leaf)) {
+            $instructionProblems.Add("$instructionPath is missing: run $kitPath/Scripts/Export-AgentInstruction.ps1")
+        }
+        else {
+            $actual = [System.IO.File]::ReadAllText($instructionFile) -replace "`r`n", "`n"
+            if ($actual -cne $expected) {
+                $have = $actual.Split("`n")
+                $want = $expected.Split("`n")
+                $line = 0
+                while ($line -lt $have.Count -and $line -lt $want.Count -and $have[$line] -ceq $want[$line]) { $line++ }
+                $instructionProblems.Add("$instructionPath differs from its sources from line $($line + 1): run $kitPath/Scripts/Export-AgentInstruction.ps1")
+            }
+        }
+    }
+    $summary = if ($instructionProblems.Count -eq 0) {
+        "$instructionPath matches its $(@($config.Instructions.Sources).Count) source file(s)"
+    }
+    else {
+        "$instructionPath is out of date or cannot be built (AG-001)"
+    }
+    Add-Result -Id 'GK14' -Name 'instructions' -Passed ($instructionProblems.Count -eq 0) -Summary $summary -Detail @($instructionProblems)
 }
 
 # -- Summary -----------------------------------------------------------------

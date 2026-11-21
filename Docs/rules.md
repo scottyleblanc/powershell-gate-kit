@@ -22,6 +22,9 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 | GK09 | version | When `Checks.Version` is on | VR-001; VR-002 with `-Base` |
 | GK10 | review | When `Checks.Review` is on (the default), with `-Base` | RV-001 |
 | GK11 | unit | When `Checks.Unit` is on, with `-Unit` | UT-001 |
+| GK12 | evidence | When `Checks.Evidence` is on, with `-Base` | EV-001 |
+| GK13 | package | When `Checks.Package` is on, with `-Base` | PK-001 |
+| GK14 | instructions | When `Checks.Instructions` is on | AG-001 |
 
 ## Config (GK01)
 
@@ -110,8 +113,8 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 
 ## Review (GK10)
 
-- **RV-001** — A branch that changes any file other than the review record and the
-  exempt files carries a record of a completed second-model review of a commit it
+- **RV-001** — A branch that changes any file other than the review record, the
+  evidence record and the exempt files carries a record of a completed second-model review of a commit it
   adds, from its merge base or an older one, with every finding answered `Fixed:`,
   `Rejected:`, `Accepted:` or `Deferred:`.
   Example: a record left by an earlier pull request fails, because its commit is
@@ -121,6 +124,28 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 
 - **UT-001** — The repository's unit test script exits 0.
   Example: the script owns its tests and coverage floor; the gate reads its exit code.
+
+## Evidence (GK12)
+
+- **EV-001** — A branch that changes a path `Evidence.Paths` covers carries an evidence
+  record showing a passing run of `Evidence.Script` on a clean tree, on a commit in the
+  branch's history, with no file but the evidence and review records changed since.
+  Example: a source change committed after `Invoke-EvidenceRun.ps1` ran fails until
+  the run is repeated and its record committed.
+
+## Package (GK13)
+
+- **PK-001** — The package built from the module holds exactly the files its
+  manifest's `FileList` names, and the manifest has a `FileList`.
+  Example: a scratch file left in the module folder fails as "not in FileList", since
+  PowerShell packages every file in the folder whatever `FileList` says.
+
+## Agent instructions (GK14)
+
+- **AG-001** — The agent instruction file is exactly what `Export-AgentInstruction.ps1`
+  builds from the files `Instructions.Sources` lists, and each of them has a title.
+  Example: a standard changed without rebuilding `AGENTS.md` fails, so agents never
+  read an older rule.
 
 ## The kit itself
 
