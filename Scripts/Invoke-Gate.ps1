@@ -16,7 +16,7 @@
       GK02 tools        PSScriptAnalyzer 1.25.0, gitleaks 8.30.1, Pester 5 and git
       GK03 analyzer     PSScriptAnalyzer with the kit's settings and rules over the
                         folders in Analyzer.Paths. A finding the repository's baseline
-                        does not hold fails (AN-001 to AN-017)
+                        does not hold fails (AN-001 to AN-018)
       GK04 static       The Pester tests in the StaticTests folder (ST-001)
       GK05 secrets      gitleaks over the working tree (SE-001)
       GK06 commits      gitleaks over every commit not yet on a remote (SE-002)

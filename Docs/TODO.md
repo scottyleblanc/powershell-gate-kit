@@ -21,6 +21,7 @@ first-class; no release is tagged with one open.
 - [x] Custom analyzer rules AN-010 to AN-013 (DEC-014) and AN-014 to AN-016 (DEC-015),
       with tests
 - [x] Analyzer rule AN-017 (DEC-016) and the optional file scan GK15 (DEC-017), with tests
+- [x] Analyzer rule AN-018 and registry deny rules in the agent templates (DEC-019), with tests
 - [ ] Prove on a copy of an existing module repository hosted on Bitbucket: baseline
       the existing findings, the gate passes, run the Bitbucket template
 - [ ] [SEC] Pin the Bitbucket template's image by digest

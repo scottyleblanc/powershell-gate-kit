@@ -2,7 +2,7 @@
     # PSScriptAnalyzer settings the gate applies (check GK03, rule AN-001). Pinned to
     # PSScriptAnalyzer 1.25.0 (Docs/PREREQUISITES.md).
     #
-    # The gate adds the custom rules in Analyzer/Rules (AN-002 to AN-017) and any
+    # The gate adds the custom rules in Analyzer/Rules (AN-002 to AN-018) and any
     # ExcludeRules a repository lists in gate.config.psd1. Which folders are analyzed
     # is set by the repository's gate.config.psd1, not here.
     #
