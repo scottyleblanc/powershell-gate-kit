@@ -353,4 +353,187 @@ Describe 'Invoke-Gate' -Tag 'Static' {
             $result.ExitCode | Should -Be 1
         }
     }
+
+    Context 'GK12 evidence' {
+
+        BeforeAll {
+            $script:evidenceConfig = "@{ SchemaVersion = 1; Checks = @{ Review = `$false; Evidence = `$true }; Evidence = @{ Script = 'scripts/Invoke-IntegrationTest.ps1'; Paths = @('source/') } }"
+
+            # A repository with main, and a branch that changes a file under source/.
+            function New-EvidenceRepo {
+                param([string]$Name, [int]$ExitCode)
+                $repo = New-FixtureRepo -Name $Name -Config $script:evidenceConfig
+                Set-FixtureFile -Repo $repo -Path 'scripts/Invoke-IntegrationTest.ps1' -Text "Write-Output 'integration ran'`nexit $ExitCode`n"
+                Set-FixtureFile -Repo $repo -Path 'source/Thing.ps1' -Text "# one`n"
+                Set-FixtureFile -Repo $repo -Path 'readme.txt' -Text "one`n"
+                $null = Save-FixtureCommit -Repo $repo -Message 'first'
+                $null = Invoke-FixtureGit -Repo $repo -Argument @('switch', '--quiet', '-c', 'feature')
+                $repo
+            }
+
+            function Invoke-FixtureEvidence {
+                param([string]$Repo)
+                $script = Join-Path -Path $Repo -ChildPath 'tools' -AdditionalChildPath 'gate', 'Scripts', 'Invoke-EvidenceRun.ps1'
+                $output = @(& pwsh -NoProfile -File $script 2>&1 | ForEach-Object { "$PSItem" })
+                [PSCustomObject]@{ ExitCode = $LASTEXITCODE; Text = $output -join "`n" }
+            }
+        }
+
+        It 'EV-001 needs no evidence when nothing under Evidence.Paths changed, and is off without -Base' {
+            $repo = New-EvidenceRepo -Name 'evnone' -ExitCode 0
+            Set-FixtureFile -Repo $repo -Path 'readme.txt' -Text "two`n"
+            $null = Save-FixtureCommit -Repo $repo -Message 'change the readme'
+            (Invoke-FixtureGate -Repo $repo).Text | Should -Match '\[OFF\]  GK12 evidence : runs only with -Base'
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Base', 'main')
+            $result.Text | Should -Match '\[PASS\] GK12 evidence : nothing under Evidence.Paths changed since main'
+            $result.ExitCode | Should -Be 0
+        }
+
+        It 'EV-001 fails a change under Evidence.Paths with no record' {
+            $repo = New-EvidenceRepo -Name 'evmissing' -ExitCode 0
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.ps1' -Text "# two`n"
+            $null   = Save-FixtureCommit -Repo $repo -Message 'change the source'
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Base', 'main')
+            $result.Text | Should -Match '\[FAIL\] GK12 evidence'
+            $result.Text | Should -Match 'Evidence/LastRun.json is not in HEAD'
+            $result.ExitCode | Should -Be 1
+        }
+
+        It 'EV-001 passes a committed passing run, and fails once the source changes after it' {
+            $repo = New-EvidenceRepo -Name 'evcurrent' -ExitCode 0
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.ps1' -Text "# two`n"
+            $null = Save-FixtureCommit -Repo $repo -Message 'change the source'
+            $run  = Invoke-FixtureEvidence -Repo $repo
+            $run.Text | Should -Match 'integration ran'
+            $run.ExitCode | Should -Be 0
+            $null   = Save-FixtureCommit -Repo $repo -Message 'record the evidence'
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Base', 'main')
+            $result.Text | Should -Match '\[PASS\] GK12 evidence : Evidence.Paths changed; Evidence/LastRun.json is current'
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.ps1' -Text "# three`n"
+            $null   = Save-FixtureCommit -Repo $repo -Message 'change the source again'
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Base', 'main')
+            $result.Text | Should -Match 'changed after the run''s commit [0-9a-f]{7}: source/Thing.ps1'
+            $result.ExitCode | Should -Be 1
+        }
+
+        It 'EV-001 fails a failing run and a run on a tree with uncommitted changes' {
+            $repo = New-EvidenceRepo -Name 'evfailed' -ExitCode 1
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.ps1' -Text "# two`n"
+            $null = Save-FixtureCommit -Repo $repo -Message 'change the source'
+            (Invoke-FixtureEvidence -Repo $repo).ExitCode | Should -Be 1
+            $null   = Save-FixtureCommit -Repo $repo -Message 'record the failed run'
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Base', 'main')
+            $result.Text | Should -Match 'does not show Evidence = true'
+
+            $dirty = New-EvidenceRepo -Name 'evdirty' -ExitCode 0
+            Set-FixtureFile -Repo $dirty -Path 'source/Thing.ps1' -Text "# two`n"
+            $run = Invoke-FixtureEvidence -Repo $dirty
+            $run.Text | Should -Match 'uncommitted change'
+            $run.ExitCode | Should -Be 1
+        }
+
+        It 'CF-005 fails Checks.Evidence on with no script or paths' {
+            $repo   = New-FixtureRepo -Name 'evnoconfig' -Config "@{ SchemaVersion = 1; Checks = @{ Evidence = `$true } }"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'Evidence.Script must name a script \(CF-005\)'
+            $result.Text | Should -Match 'Evidence.Paths must list one or more paths \(CF-005\)'
+            $result.ExitCode | Should -Be 1
+        }
+    }
+
+    Context 'GK13 package' {
+
+        BeforeAll {
+            $script:packageConfig = "@{ SchemaVersion = 1; Checks = @{ Review = `$false; Package = `$true }; Package = @{ Manifest = 'source/Thing/Thing.psd1' } }"
+
+            function New-PackageRepo {
+                param([string]$Name, [string]$FileList)
+                $repo = New-FixtureRepo -Name $Name -Config $script:packageConfig
+                $manifest = "@{ RootModule = 'Thing.psm1'; ModuleVersion = '1.0.0'; GUID = '0b6f3c47-7d0c-4d55-9a37-2f0e1c5a9b11'; Author = 'gate-test'; Description = 'fixture module'; FunctionsToExport = @('Get-Thing')$FileList }"
+                Set-FixtureFile -Repo $repo -Path 'source/Thing/Thing.psd1' -Text $manifest
+                Set-FixtureFile -Repo $repo -Path 'source/Thing/Thing.psm1' -Text "function Get-Thing { 1 }`n"
+                $null = Save-FixtureCommit -Repo $repo -Message 'first'
+                $null = Invoke-FixtureGit -Repo $repo -Argument @('switch', '--quiet', '-c', 'feature')
+                $repo
+            }
+        }
+
+        It 'PK-001 passes a package that holds exactly the FileList, and is off without -Base' {
+            $repo = New-PackageRepo -Name 'pkmatch' -FileList "; FileList = @('Thing.psd1', 'Thing.psm1')"
+            (Invoke-FixtureGate -Repo $repo).Text | Should -Match '\[OFF\]  GK13 package : runs only with -Base'
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Base', 'main')
+            $result.Text | Should -Match '\[PASS\] GK13 package : Thing.1.0.0.nupkg holds the 2 files FileList names'
+            $result.ExitCode | Should -Be 0
+        }
+
+        It 'PK-001 fails a stray file in the module folder that FileList does not name' {
+            $repo = New-PackageRepo -Name 'pkstray' -FileList "; FileList = @('Thing.psd1', 'Thing.psm1')"
+            Set-FixtureFile -Repo $repo -Path 'source/Thing/notes.txt' -Text "scratch`n"
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Base', 'main')
+            $result.Text | Should -Match '\[FAIL\] GK13 package'
+            $result.Text | Should -Match 'not in FileList: notes.txt'
+            $result.ExitCode | Should -Be 1
+        }
+
+        It 'PK-001 fails a manifest with no FileList' {
+            $repo   = New-PackageRepo -Name 'pknolist' -FileList ''
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Base', 'main')
+            $result.Text | Should -Match 'has no FileList'
+            $result.ExitCode | Should -Be 1
+        }
+    }
+
+    Context 'GK14 instructions' {
+
+        BeforeAll {
+            $script:instructionConfig = "@{ SchemaVersion = 1; Checks = @{ Instructions = `$true }; Instructions = @{ Sources = @('docs/standards/coding.md') } }"
+
+            function Invoke-FixtureExport {
+                param([string]$Repo)
+                $script = Join-Path -Path $Repo -ChildPath 'tools' -AdditionalChildPath 'gate', 'Scripts', 'Export-AgentInstruction.ps1'
+                $null = & pwsh -NoProfile -File $script 2>&1
+                $LASTEXITCODE
+            }
+        }
+
+        It 'AG-001 fails a missing file, passes once built, and fails when a source changes' {
+            $repo = New-FixtureRepo -Name 'agents' -Config $script:instructionConfig
+            Set-FixtureFile -Repo $repo -Path 'docs/standards/coding.md' -Text "# Coding`n`n## Naming`n`n- Use approved verbs. See [rules](../rules.md#ids) and [the web](https://example.com).`n"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'AGENTS.md is missing'
+            $result.ExitCode | Should -Be 1
+
+            Invoke-FixtureExport -Repo $repo | Should -Be 0
+            $text = [System.IO.File]::ReadAllText((Join-Path -Path $repo -ChildPath 'AGENTS.md'))
+            $text | Should -Match '(?m)^# Agent instructions$'
+            $text | Should -Match '(?m)^## Coding$'
+            $text | Should -Match '(?m)^### Naming$'
+            $text | Should -Match 'Source: `docs/standards/coding.md`'
+            $text | Should -Match '\[rules\]\(docs/rules.md#ids\)'
+            $text | Should -Match '\[the web\]\(https://example.com\)'
+            $text | Should -Match 'pwsh -NoProfile -File ./tools/gate/Scripts/Invoke-Gate.ps1'
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[PASS\] GK14 instructions : AGENTS.md matches its 1 source file\(s\)'
+
+            Set-FixtureFile -Repo $repo -Path 'docs/standards/coding.md' -Text "# Coding`n`n- A new rule.`n"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'AGENTS.md differs from its sources from line \d+'
+            $result.ExitCode | Should -Be 1
+        }
+
+        It 'AG-001 fails a source file with no title' {
+            $repo = New-FixtureRepo -Name 'agentsnotitle' -Config $script:instructionConfig
+            Set-FixtureFile -Repo $repo -Path 'docs/standards/coding.md' -Text "No title here.`n"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match "'docs/standards/coding.md' has no first-level title"
+            $result.ExitCode | Should -Be 1
+        }
+
+        It 'CF-005 fails Checks.Instructions on with no sources' {
+            $repo   = New-FixtureRepo -Name 'agentsnosources' -Config "@{ SchemaVersion = 1; Checks = @{ Instructions = `$true } }"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'Instructions.Sources must list one or more files \(CF-005\)'
+            $result.ExitCode | Should -Be 1
+        }
+    }
 }
