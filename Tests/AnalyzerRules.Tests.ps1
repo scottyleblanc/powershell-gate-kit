@@ -1,6 +1,6 @@
 #Requires -Version 7.6
 
-# Rules AN-002 to AN-017: each custom analyzer rule reports its defect and stays quiet
+# Rules AN-002 to AN-018: each custom analyzer rule reports its defect and stays quiet
 # on the corrected code. A rule that never fires would let GK03 pass anything.
 
 BeforeDiscovery {
@@ -97,6 +97,11 @@ function Get-Thing {
             Rule = 'Measure-AN017VerboseLabelled'
             Bad  = 'function Get-Thing { [CmdletBinding()] param() Write-Verbose "Reading." }'
             Good = 'function Get-Thing { [CmdletBinding()] param() Write-Verbose "[Get-Thing] Reading." }'
+        }
+        @{
+            Rule = 'Measure-AN018NoRegistryWrite'
+            Bad  = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Thing" -Name Level -Value 1'
+            Good = 'Get-ItemProperty -Path "HKLM:\SOFTWARE\Thing" -Name Level'
         }
     )
 }
@@ -267,5 +272,30 @@ Describe 'Custom analyzer rules' -Tag 'Static' {
     It 'Measure-AN017VerboseLabelled uses the script name outside every function' {
         @(Get-FileRuleHit -RelativePath 'scripts/Invoke-Build.ps1' -Script 'Write-Verbose "[Invoke-Build] Starting."' -Rule 'Measure-AN017VerboseLabelled').Count | Should -Be 0
         @(Get-FileRuleHit -RelativePath 'scripts/Invoke-Other.ps1' -Script 'Write-Verbose "Starting."' -Rule 'Measure-AN017VerboseLabelled').Count | Should -Be 1
+    }
+
+    It 'Measure-AN018NoRegistryWrite reports <Name>' -ForEach @(
+        @{ Name = 'an alias of Set-ItemProperty on HKCU:'; Script = 'sp HKCU:\Software\Thing -Name Level -Value 1' }
+        @{ Name = 'Remove-Item on a Registry:: path'; Script = 'Remove-Item -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Thing"' }
+        @{ Name = 'New-Item creating a key'; Script = 'New-Item -Path HKCU:\Software\Thing' }
+        @{ Name = 'reg add'; Script = 'reg add HKCU\Software\Thing /v Level /d 1 /f' }
+        @{ Name = 'reg.exe delete'; Script = 'reg.exe delete HKCU\Software\Thing /f' }
+        @{ Name = 'regedit importing a file'; Script = 'regedit /s settings.reg' }
+        @{ Name = 'CreateSubKey'; Script = '$key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey("Software\Thing")' }
+        @{ Name = 'Registry.SetValue'; Script = '[Microsoft.Win32.Registry]::SetValue("HKEY_CURRENT_USER\Software\Thing", "Level", 1)' }
+        @{ Name = 'SetValue on a key in a file that names a registry type'; Script = '[Microsoft.Win32.RegistryKey]$key = $null; $key.SetValue("Level", 1)' }
+        @{ Name = 'OpenSubKey for writing'; Script = '[Microsoft.Win32.Registry]::LocalMachine.OpenSubKey("SOFTWARE\Thing", $true)' }
+    ) {
+        @(Get-RuleHit -Script $Script -Rule 'Measure-AN018NoRegistryWrite').Count | Should -BeGreaterThan 0
+    }
+
+    It 'Measure-AN018NoRegistryWrite passes <Name>' -ForEach @(
+        @{ Name = 'reg query'; Script = 'reg query HKCU\Software\Thing' }
+        @{ Name = 'Array.SetValue in a file that names no registry type'; Script = '$a = @(1, 2); $a.SetValue(5, 0)' }
+        @{ Name = 'Set-ItemProperty on a file'; Script = 'Set-ItemProperty -Path C:\temp\file.txt -Name IsReadOnly -Value $true' }
+        @{ Name = 'OpenSubKey for reading'; Script = '[Microsoft.Win32.Registry]::LocalMachine.OpenSubKey("SOFTWARE\Thing")' }
+        @{ Name = 'a change suppressed with a justification'; Script = "function Set-Thing { [Diagnostics.CodeAnalysis.SuppressMessageAttribute('Measure-AN018NoRegistryWrite', '', Justification = 'Installer sets its own key.')] [CmdletBinding()] param() Set-ItemProperty -Path HKCU:\Software\Thing -Name Level -Value 1 }" }
+    ) {
+        @(Get-RuleHit -Script $Script -Rule 'Measure-AN018NoRegistryWrite').Count | Should -Be 0
     }
 }

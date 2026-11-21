@@ -301,6 +301,19 @@ Describe 'Invoke-Gate' -Tag 'Static' {
             $result.Text | Should -Match 'undocumented allow rule'
             $result.ExitCode | Should -Be 1
         }
+
+        It 'PM-001 passes the kit''s two agent templates together, registry deny rules included' {
+            $repo = New-FixtureRepo -Name 'pmtemplates' -Config "@{ SchemaVersion = 1; Permissions = 'gate/agent-permissions.psd1' }"
+            $templates = Join-Path -Path $script:kitRoot -ChildPath 'Templates'
+            $settings  = [System.IO.File]::ReadAllText((Join-Path -Path $templates -ChildPath 'claude-settings.json'))
+            $settings | Should -Match ([regex]::Escape('"Bash(reg* add *)"'))
+            $settings | Should -Match ([regex]::Escape('"PowerShell(Set-* *HK*:*)"'))
+            Set-FixtureFile -Repo $repo -Path '.claude/settings.json' -Text $settings
+            Set-FixtureFile -Repo $repo -Path 'gate/agent-permissions.psd1' -Text ([System.IO.File]::ReadAllText((Join-Path -Path $templates -ChildPath 'agent-permissions.psd1')))
+            $null   = Save-FixtureCommit -Repo $repo -Message 'add agent settings'
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[PASS\] GK08 permissions : 1 agent settings file\(s\) match'
+        }
     }
 
     Context 'GK09 version' {
