@@ -328,7 +328,24 @@ function Invoke-GateAnalyzer {
         })
 
     $findings = @(foreach ($file in $files) {
-            foreach ($record in @(Invoke-ScriptAnalyzer -Path $file.FullName -Settings $settings)) {
+            # PSScriptAnalyzer 1.25.0 sometimes throws while it loads the custom rule
+            # modules ("more than one dynamic module in each dynamic assembly", or a null
+            # reference); the same file then passes on the next call. A throw is not a
+            # finding, so the file is tried again, up to three times; a third throw
+            # stops the analysis and the check fails.
+            $records = $null
+            for ($attempt = 1; $null -eq $records; $attempt++) {
+                try {
+                    $records = @(Invoke-ScriptAnalyzer -Path $file.FullName -Settings $settings)
+                }
+                catch {
+                    if ($attempt -ge 3) {
+                        $relativeFile = [System.IO.Path]::GetRelativePath($RepoRoot, $file.FullName).Replace('\', '/')
+                        throw "[Invoke-GateAnalyzer] PSScriptAnalyzer failed 3 times on ${relativeFile}: $($PSItem.Exception.Message)"
+                    }
+                }
+            }
+            foreach ($record in $records) {
                 $relative = [System.IO.Path]::GetRelativePath($RepoRoot, $record.ScriptPath).Replace('\', '/')
                 $skip     = @($byPath | Where-Object { $relative.StartsWith($PSItem.Prefix, [System.StringComparison]::OrdinalIgnoreCase) -and $PSItem.Rules -contains $record.RuleName })
                 if ($skip.Count -gt 0) { continue }

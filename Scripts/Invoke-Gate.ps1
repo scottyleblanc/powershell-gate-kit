@@ -192,6 +192,7 @@ Add-Result -Id 'GK02' -Name 'tools' -Passed ($toolProblems.Count -eq 0) -Summary
 
 # -- GK03 analyzer -----------------------------------------------------------
 
+$analysis = $null
 if ($Quick) {
     Write-Off -Id 'GK03' -Name 'analyzer' -Reason 'skipped by -Quick; CI runs it'
 }
@@ -200,7 +201,16 @@ elseif ($null -eq $analyzerModule) {
 }
 else {
     Import-Module -Name PSScriptAnalyzer -RequiredVersion $requiredAnalyzer
-    $analysis     = Invoke-GateAnalyzer -RepoRoot $repoRoot -KitRoot $kitRoot -Config $config
+    try {
+        $analysis = Invoke-GateAnalyzer -RepoRoot $repoRoot -KitRoot $kitRoot -Config $config
+    }
+    catch {
+        # Fail closed: an analysis that did not finish does not pass, and the later
+        # checks still run.
+        Add-Result -Id 'GK03' -Name 'analyzer' -Passed $false -Summary 'not run to the end: PSScriptAnalyzer failed' -Detail @(($PSItem.Exception.Message -replace '^\[Invoke-GateAnalyzer\] ', ''))
+    }
+}
+if ($null -ne $analysis) {
     $baselineFile = if ($config.Analyzer.Baseline) { Resolve-GatePath -RepoRoot $repoRoot -RelativePath $config.Analyzer.Baseline } else { '' }
     $compared     = Compare-AnalyzerBaseline -Findings $analysis.Findings -BaselineFile $baselineFile
     $detail       = @($compared.New | ForEach-Object { "$($PSItem.Path):$($PSItem.Line) $($PSItem.Rule): $($PSItem.Message)" })
