@@ -30,6 +30,8 @@ first-class; no release is tagged with one open.
       requires a pull request and a passing `gate` check, with no bypass
 - [x] `Invoke-Gate.ps1 -Timestamp`: the UTC time on every line and each check's
       duration, passed by the CI templates (DEC-021), with tests
+- [x] [SEC] GK07 refuses a commit whose author or committer address `CommitEmails`
+      does not allow (CM-002, DEC-022), on for the kit itself, with tests
 - [ ] Prove on a copy of an existing module repository hosted on Bitbucket: baseline
       the existing findings, the gate passes, run the Bitbucket template
 - [ ] [SEC] Pin the Bitbucket template's image by digest

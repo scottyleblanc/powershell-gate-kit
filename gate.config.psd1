@@ -23,6 +23,10 @@
     StaticTests     = 'Tests'
     Gitleaks        = ''
     MessagePatterns = ''
+
+    # GK07 (CM-002): commits carry only GitHub no-reply addresses: the maintainer's,
+    # and GitHub's own for merges made on the web (DEC-022).
+    CommitEmails    = @('^\d+\+[A-Za-z0-9-]+@users\.noreply\.github\.com$', '^noreply@github\.com$')
     Permissions     = ''
 
     Review = @{

@@ -48,6 +48,12 @@
     # tools/gate/Templates/message-patterns.psd1.
     MessagePatterns = ''
 
+    # GK07 (CM-002). Regular expressions; each commit's author and committer address
+    # must match one, or the push and the pull request fail. Empty turns the check
+    # off. For example, to allow only GitHub no-reply addresses:
+    # @('^\d+\+[A-Za-z0-9-]+@users\.noreply\.github\.com$', '^noreply@github\.com$')
+    CommitEmails = @()
+
     # GK08. The documented agent permission rules, or '' when no agent settings file is
     # committed. Start from tools/gate/Templates/agent-permissions.psd1.
     Permissions = ''
