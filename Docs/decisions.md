@@ -245,3 +245,25 @@ because a repository that adopts it may first have values to remove.
 in full.
 
 **Enforced by:** the gate tests under "GK15 files".
+
+## DEC-018 — A repository's gate files can live in Gate/
+
+`gate.config.psd1` is read from the repository root, or from `Gate/gate.config.psd1`
+when the root has none; a copy in both places fails CF-001. `GitleaksIgnore` names
+the gitleaks ignore file, which otherwise stays `.gitleaksignore` at the root. Paths
+in the config, and fingerprints in the ignore file, stay relative to the root.
+
+**Why:** a repository keeps its baseline, gitleaks config and hook in one folder, and
+two of its gate files could not join them: the kit read the config only at the root,
+and gitleaks read the ignore file only from the folder it scans. One fixed second
+place keeps every kit script, the pre-push hook and the CI templates unchanged,
+because they all find the config through Import-GateConfig.
+
+**Rules out:** a `-ConfigPath` parameter on every script (each hook and pipeline would
+have to pass it, and a call that forgot would read the wrong file); searching more
+folders; a copy in both places, which would leave the reader unsure which one
+applies. `bitbucket-pipelines.yml` stays at the root, the only place Bitbucket reads
+it.
+
+**Enforced by:** the gate tests under "GK01 config" and "GK05 to GK07 secrets, commits
+and messages".
