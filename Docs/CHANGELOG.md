@@ -78,6 +78,14 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Changed
 
+- AN-014 reads an early exit from the structure of the code (DEC-015). A declining
+  `if` that ends in `continue` or `break` for an enclosing loop or `switch` now covers
+  the calls after it in that loop. A `return` inside another branch, or inside a
+  `ForEach-Object` block, no longer covers calls outside it, and a `return` that is not
+  the last statement of the `if` body no longer counts; a target can see new findings
+  for those, which were missed before.
+- AN-017 accepts the class name as the label inside a class method or constructor
+  (DEC-016).
 - `Docs/RUNBOOK.md` holds every step for adding the gate to a repository and keeping
   it working: ADOPT-1 to ADOPT-13, the per-pull-request steps PR-1 to PR-3, updating
   the kit (UPD-1), and a table of what each analyzer rule needs. The README's

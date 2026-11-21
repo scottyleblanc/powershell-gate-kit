@@ -10,7 +10,9 @@ function Measure-AN017VerboseLabelled {
         Reports a Write-Verbose call whose message, given as a literal string, an
         expandable string or the left side of a -f expression, does not start with
         [Name]. Name is the enclosing function, or any function that encloses it, so a
-        helper defined inside a function may use either name. A call outside every
+        helper defined inside a function may use either name. Inside a class method or
+        constructor, the class's name is accepted too: the class is what callers use and
+        what an operator searches a log for. A call outside every
         function uses the script's file name without its extension; code analyzed
         without a path is then skipped. A message held in a variable, or built some
         other way, is not checked (DEC-016). Custom PSScriptAnalyzer rule.
@@ -78,10 +80,13 @@ function Measure-AN017VerboseLabelled {
             $message -is [System.Management.Automation.Language.ExpandableStringExpressionAst]
         if (-not $isString) { continue }
 
-        # The names the label may use: every enclosing function, then the script.
+        # The names the label may use: every enclosing function or method, and the class
+        # that holds a method; then, outside all of them, the script.
         $names = [System.Collections.Generic.List[string]]::new()
         for ($node = $call.Parent; $null -ne $node; $node = $node.Parent) {
             if ($node -is [System.Management.Automation.Language.FunctionDefinitionAst]) { $names.Add($node.Name) }
+            if ($node -is [System.Management.Automation.Language.FunctionMemberAst] -and -not $names.Contains($node.Name)) { $names.Add($node.Name) }
+            if ($node -is [System.Management.Automation.Language.TypeDefinitionAst]) { $names.Add($node.Name) }
         }
         if ($names.Count -eq 0) {
             if ($null -eq $scriptName) { continue }
