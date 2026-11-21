@@ -46,7 +46,7 @@ The gate behaviour tests take about a minute and a half.
 | Developer workstation (Windows) | RemoteSigned |
 | CI runner, GitHub Actions on Windows | the runner default (Unrestricted) |
 | CI runner, Linux | not applicable |
-| Locked-down host requiring signed scripts | AllSigned, with every `.ps1` and `.psm1` in `Scripts/` and `Analyzer/Rules/` signed |
+| Locked-down host requiring signed scripts | AllSigned, with every `.ps1` and `.psm1` in `Scripts/`, `Analyzer/Rules/` and `Analyzer/Lib/` signed |
 
 ## Platform support
 

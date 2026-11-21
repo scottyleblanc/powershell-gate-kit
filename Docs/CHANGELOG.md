@@ -8,6 +8,16 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Added
 
+- Custom analyzer rules AN-010 to AN-013 (DEC-014). Every script with a param block,
+  and every function not defined inside another function or such a script, sets
+  strict mode and `$ErrorActionPreference = 'Stop'` in its own body (AN-010), declares
+  `[CmdletBinding()]` (AN-011), and has help that `Get-Help` can read, with a synopsis,
+  description, example, notes and one entry per parameter (AN-013). Every analyzer
+  suppression has a `Justification` (AN-012). A repository upgrading the kit sees each
+  gap as a new GK03 finding; fix it, or hold it in the baseline.
+  `Analyzer/Lib/Get-GateRuleTarget.ps1` lists the scripts and functions the three
+  scoped rules check.
+
 - `Analyzer.ExcludeRulesByPath` in `gate.config.psd1` turns analyzer rules off under
   one folder, for example `@{ 'scripts' = @('PSAvoidUsingWriteHost') }` (DEC-012). GK01
   checks each folder exists (CF-004) and lists at least one rule name (CF-003).
@@ -54,6 +64,11 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Fixed
 
+- `Get-Help` shows the help of every script in `Scripts/`. Each had its help block on
+  the line directly below `#Requires`, which PowerShell does not read as script help,
+  so `Get-Help` showed only the syntax. A blank line now separates them (AN-013).
+- The functions in `Scripts/Lib/GateLib.ps1` have a description, an example and notes
+  in their help (AN-013).
 - GK03 tries a file again, up to three times, when PSScriptAnalyzer 1.25.0 throws
   while loading the custom rules ("more than one dynamic module in each dynamic
   assembly", or a null reference); the throw was intermittent and stopped the whole

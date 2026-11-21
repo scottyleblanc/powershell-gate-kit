@@ -13,7 +13,7 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 |---|---|---|---|
 | GK01 | config | Always; a failure stops the gate | CF-001 to CF-005 |
 | GK02 | tools | Always | — |
-| GK03 | analyzer | Always, except with `-Quick` (the pre-push hook, DEC-011) | AN-001 to AN-009 |
+| GK03 | analyzer | Always, except with `-Quick` (the pre-push hook, DEC-011) | AN-001 to AN-013 |
 | GK04 | static | Always | ST-001 |
 | GK05 | secrets | Always | SE-001 |
 | GK06 | commits | Always | SE-002 |
@@ -67,6 +67,21 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
   Example: `ForEach-Object { $PSItem.Name }`.
 - **AN-009** — No emoji in code, scripts or output; status uses a `[LABEL]` prefix.
   Example: `Write-Output '[INFO] done'`.
+- **AN-010** — Every script with a param block, and every function, sets
+  `Set-StrictMode -Version Latest` and `$ErrorActionPreference = 'Stop'` as statements
+  of its own body. A function defined inside another function or such a script is
+  exempt (DEC-014).
+  Example: both lines directly below the param block, not inside a `try`.
+- **AN-011** — Every script with a param block, and every function, declares
+  `[CmdletBinding()]`, with the same exemption.
+  Example: `[CmdletBinding()]` above `param(...)`.
+- **AN-012** — Every analyzer suppression has a non-blank `Justification`.
+  Example: `[SuppressMessage('PSAvoidUsingWriteHost', '', Justification = 'Console output.')]`.
+- **AN-013** — Every script with a param block, and every function, has help that
+  `Get-Help` can read, with a synopsis, description, example and notes, and one
+  parameter entry for each parameter and no other, with the same exemption.
+  Example: help that `Get-Help` cannot read fails, such as a prose line that starts
+  with `.properties`, or script help on the line directly below `#Requires`.
 
 ## Static tests (GK04)
 
