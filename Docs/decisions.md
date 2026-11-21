@@ -195,3 +195,53 @@ as completely as no help at all.
 (a module file or a dot-sourced library, whose functions are checked one by one).
 
 **Enforced by:** the analyzer rule tests for AN-010 to AN-013.
+
+## DEC-015 — Where AN-014, AN-015 and AN-016 apply
+
+AN-014 checks only a script or function that declares `SupportsShouldProcess`. AN-015
+treats a file as public when its path has a folder named `Public`. AN-016 requires a
+`#Requires -Version` statement and accepts any version.
+
+**Why:** the kit sets no folder layout, so a rule cannot assume one. A command that
+declares `SupportsShouldProcess` has promised callers a preview, so a call it does not
+decide on breaks that promise; a command that makes no such promise would raise
+findings with nothing to fix. `Public` is the common folder name for exported
+functions, and a repository without one is not checked. The minimum PowerShell
+version is the repository's choice; the kit requires only that each file states it.
+
+**Rules out:** checking commands that do not declare `SupportsShouldProcess`;
+configuring the public folder; requiring a particular version.
+
+**Enforced by:** the analyzer rule tests for AN-014 to AN-016.
+
+## DEC-016 — A verbose message names the command that writes it
+
+AN-017 checks a `Write-Verbose` message given as a literal string, an expandable string
+or the left side of a `-f` expression. The label may be any enclosing function's name,
+or the script's file name outside every function.
+
+**Why:** a verbose stream from several commands is unreadable without the name of the
+one that wrote each line. A helper defined inside a function often reports as the
+function users called, so either name is accepted.
+
+**Rules out:** checking a message held in a variable or built another way, which the
+rule cannot read; checking the text after the label.
+
+**Enforced by:** the analyzer rule tests for AN-017.
+
+## DEC-017 — The message patterns can also scan the files
+
+GK15 matches the message patterns against every file git tracks and every untracked
+file it does not ignore. It is off by default. It skips `Files.Exclude`, binary files
+and the pattern file itself.
+
+**Why:** a value that must not appear in a commit message must not appear in a
+committed file either, and gitleaks finds secrets, not names that are sensitive to
+one repository. Untracked files are included so a value is found before `git add`.
+The pattern file holds the patterns, and its examples may match them. It is optional
+because a repository that adopts it may first have values to remove.
+
+**Rules out:** scanning history (GK06 covers secrets there); printing a matched value
+in full.
+
+**Enforced by:** the gate tests under "GK15 files".
