@@ -1,8 +1,8 @@
 #!/bin/sh
 # Runs the gate before every push: tools/gate/Scripts/Invoke-Gate.ps1.
 #
-# Copy to .githooks/pre-push and turn it on once in each clone:
-#   git config core.hooksPath .githooks
+# Copy into the repository and turn it on once in each clone: tools/gate/Docs/RUNBOOK.md,
+# ADOPT-5.
 #
 # The push is refused when any gate check fails. git push --no-verify skips the hook;
 # use it only when you know why the gate is failing and the push must still happen.

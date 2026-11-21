@@ -68,6 +68,15 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Changed
 
+- `Docs/RUNBOOK.md` holds every step for adding the gate to a repository and keeping
+  it working: ADOPT-1 to ADOPT-13, the per-pull-request steps PR-1 to PR-3, updating
+  the kit (UPD-1), and a table of what each analyzer rule needs. The README's
+  installation steps, the review path in `Docs/REVIEW.md`, the environment setup in
+  `Docs/PREREQUISITES.md` and the copy instruction in `Templates/pre-push` move there
+  and leave a pointer. New in the runbook: putting a repository's gate files in
+  `Gate/`, keeping static tests portable to the Linux CI runner, clearing a baseline
+  one folder at a time, requiring the build on Bitbucket, and finding the kit commit a
+  `subtree pull` took.
 - The README, `Docs/REVIEW.md` and the GitHub template state that a required check
   needs a public repository or a paid GitHub plan; on GitHub Free a private
   repository's gate only advises, and the human confirms it passed before merging.
