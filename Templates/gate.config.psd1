@@ -15,13 +15,15 @@
 
     # GK03. The folders analyzed, recursively. Files matching Exclude are skipped.
     # ExcludeRules turns off analyzer rules for this repository; each one is a gap, so
-    # say why beside it. Baseline names the file Update-AnalyzerBaseline.ps1 writes,
-    # or '' for none.
+    # say why beside it. ExcludeRulesByPath turns rules off under one folder only, as
+    # folder = rule names; say why beside each. Baseline names the file
+    # Update-AnalyzerBaseline.ps1 writes, or '' for none.
     Analyzer = @{
-        Paths        = @()     # for example @('source', 'scripts')
-        Exclude      = @('*.Tests.ps1')
-        ExcludeRules = @()
-        Baseline     = ''      # for example 'gate/analyzer-baseline.psd1'
+        Paths              = @()     # for example @('source', 'scripts')
+        Exclude            = @('*.Tests.ps1')
+        ExcludeRules       = @()
+        ExcludeRulesByPath = @{}     # for example @{ 'scripts' = @('PSAvoidUsingWriteHost') }
+        Baseline           = ''      # for example 'gate/analyzer-baseline.psd1'
     }
 
     # GK04. A folder of Pester tests that read source text, or '' for none.

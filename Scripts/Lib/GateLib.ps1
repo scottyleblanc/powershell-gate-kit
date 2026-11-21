@@ -21,7 +21,7 @@ $ErrorActionPreference = 'Stop'
 $script:GateConfigDefault = [ordered]@{
     SchemaVersion   = 1
     Checks          = [ordered]@{ Review = $true; Version = $false; Unit = $false }
-    Analyzer        = [ordered]@{ Paths = @(); Exclude = @('*.Tests.ps1'); ExcludeRules = @(); Baseline = '' }
+    Analyzer        = [ordered]@{ Paths = @(); Exclude = @('*.Tests.ps1'); ExcludeRules = @(); ExcludeRulesByPath = @{}; Baseline = '' }
     StaticTests     = ''
     Gitleaks        = ''
     MessagePatterns = ''
@@ -171,6 +171,22 @@ function Import-GateConfig {
     # must exist, except the review record, which a branch adds later.
     $mustExist = [System.Collections.Generic.List[object]]::new()
     foreach ($path in @($config.Analyzer.Paths)) { $mustExist.Add(@('Analyzer.Paths', $path, 'Container')) }
+
+    # Analyzer.ExcludeRulesByPath maps a folder to the rule names not reported under it.
+    $byPath = $config.Analyzer.ExcludeRulesByPath
+    if ($byPath -isnot [System.Collections.IDictionary]) {
+        $problems.Add("gate.config.psd1: 'Analyzer.ExcludeRulesByPath' must be a hashtable of folder = rule names (CF-003)")
+        $config.Analyzer.ExcludeRulesByPath = @{}
+    }
+    else {
+        foreach ($folder in @($byPath.Keys)) {
+            $mustExist.Add(@('Analyzer.ExcludeRulesByPath', [string]$folder, 'Container'))
+            $rules = @($byPath[$folder])
+            if ($rules.Count -eq 0 -or @($rules | Where-Object { $PSItem -isnot [string] -or -not $PSItem }).Count -gt 0) {
+                $problems.Add("gate.config.psd1: Analyzer.ExcludeRulesByPath '$folder' must list one or more rule names (CF-003)")
+            }
+        }
+    }
     # The leading commas keep each triple whole: @() would flatten them otherwise.
     $optionalPaths = @(
         , @('Analyzer.Baseline', $config.Analyzer.Baseline, 'Leaf')
@@ -227,7 +243,8 @@ function Invoke-GateAnalyzer {
     <#
     .SYNOPSIS
         Runs PSScriptAnalyzer over the folders the config names, with the kit's
-        settings and custom rules.
+        settings and custom rules. A finding from a rule that
+        Analyzer.ExcludeRulesByPath lists for a folder is dropped for files under it.
     .PARAMETER RepoRoot
         The repository root.
     .PARAMETER KitRoot
@@ -275,10 +292,18 @@ function Invoke-GateAnalyzer {
             } | Sort-Object -Property FullName -Unique)
     }
 
+    # Folder prefixes ('scripts/') and the rules not reported under each.
+    $byPath = @(foreach ($folder in @($Config.Analyzer.ExcludeRulesByPath.Keys)) {
+            [PSCustomObject]@{ Prefix = ([string]$folder).Trim('/') + '/'; Rules = [string[]]@($Config.Analyzer.ExcludeRulesByPath[$folder]) }
+        })
+
     $findings = @(foreach ($file in $files) {
             foreach ($record in @(Invoke-ScriptAnalyzer -Path $file.FullName -Settings $settings)) {
+                $relative = [System.IO.Path]::GetRelativePath($RepoRoot, $record.ScriptPath).Replace('\', '/')
+                $skip     = @($byPath | Where-Object { $relative.StartsWith($PSItem.Prefix, [System.StringComparison]::OrdinalIgnoreCase) -and $PSItem.Rules -contains $record.RuleName })
+                if ($skip.Count -gt 0) { continue }
                 [PSCustomObject]@{
-                    Path    = [System.IO.Path]::GetRelativePath($RepoRoot, $record.ScriptPath).Replace('\', '/')
+                    Path    = $relative
                     Line    = $record.Line
                     Rule    = $record.RuleName
                     Message = $record.Message
