@@ -17,6 +17,16 @@ All notable changes to this kit are recorded here. The format follows
   refreshes its `.githooks/pre-push` from the template to pick this up.
 - `LICENSE`: the MIT licence (DEC-010), and a Licence section in the README. KT-001
   skips `LICENSE`, the one file that names the copyright holder.
+- Three optional checks, off by default (DEC-013):
+  - GK12 evidence (EV-001), with `-Base`: when a branch changes a path under
+    `Evidence.Paths`, the committed record must show a passing run of
+    `Evidence.Script` on a clean tree, current for the branch.
+    `Scripts/Invoke-EvidenceRun.ps1` runs the script and writes the record.
+  - GK13 package (PK-001), with `-Base`: the package `Compress-PSResource` builds from
+    `Package.Manifest`'s folder holds exactly the files its `FileList` names.
+    `Package.Build` names a build script to run first.
+  - GK14 instructions (AG-001): `AGENTS.md` matches what
+    `Scripts/Export-AgentInstruction.ps1` builds from `Instructions.Sources`.
 - `Scripts/Invoke-Gate.ps1`: checks GK01 to GK11, configured by `gate.config.psd1`.
 - `Scripts/Install-GateTool.ps1` for Windows x64 and Linux x64.
 - `Scripts/Invoke-ModelReview.ps1`, `Scripts/Update-AnalyzerBaseline.ps1`,
@@ -36,6 +46,8 @@ All notable changes to this kit are recorded here. The format follows
   each saying what it does; the tool install and the permanent `PATH` entry for
   gitleaks; a worked `Analyzer.Paths` example and the `Checks` table; every path given
   in full, relative to the target's root folder.
+- GK10 exempts the evidence record, as it does the review record (RV-001).
+- DEC-003 no longer rules out test evidence, package contents or agent instructions.
 - README installation adds a step for the AI agent permission files: copying
   `Templates/claude-settings.json` to `.claude/settings.json` and
   `Templates/agent-permissions.psd1` into the target, checked by GK08.
@@ -59,3 +71,4 @@ All notable changes to this kit are recorded here. The format follows
 
 - gitleaks and PowerShell downloads checked against pinned SHA-256 hashes.
 - Agent permission files checked against their documented rules (PM-001, PM-002).
+- GK13 fails a module package that would ship a file its `FileList` does not name.

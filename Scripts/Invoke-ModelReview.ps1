@@ -7,8 +7,9 @@
     Reviews the commits HEAD adds to Base, once, in a new Claude Code session that did
     not write them (rule RV-001, Docs\REVIEW.md):
 
-      1. Refuses to run unless every change is committed. The review record and the
-         files listed in gate.config.psd1 under Review.Exempt do not count.
+      1. Refuses to run unless every change is committed. The review record, the
+         evidence record (with Checks.Evidence on) and the files listed in
+         gate.config.psd1 under Review.Exempt do not count.
       2. Checks out HEAD into a new git worktree under the system temp folder, and
          writes three inputs into a .review-input folder inside it: the diff from the
          merge base with Base, the list of changed files and the branch's commit
@@ -107,7 +108,8 @@ $config = $loaded.Config
 
 $recordName    = $config.Review.Record
 $recordFile    = Resolve-GatePath -RepoRoot $repoRoot -RelativePath $recordName
-$exemptFiles   = @(@($recordName) + @($config.Review.Exempt) | Where-Object { $PSItem })
+$evidenceName  = if ($config.Checks.Evidence) { $config.Evidence.Record } else { '' }
+$exemptFiles   = @(@($recordName) + @($evidenceName) + @($config.Review.Exempt) | Where-Object { $PSItem })
 $promptFile    = Join-Path -Path $kitRoot -ChildPath 'Review' -AdditionalChildPath 'reviewer-prompt.md'
 $schemaFile    = Join-Path -Path $kitRoot -ChildPath 'Review' -AdditionalChildPath 'review-output.schema.json'
 
