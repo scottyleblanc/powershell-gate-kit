@@ -267,3 +267,24 @@ it.
 
 **Enforced by:** the gate tests under "GK01 config" and "GK05 to GK07 secrets, commits
 and messages".
+
+## DEC-019 — Registry changes are blocked in the code and in the agent's commands
+
+AN-018 fails code that changes the Windows registry, and the agent templates deny the
+agent's own registry-changing commands. Reading the registry is allowed in both.
+
+**Why:** a registry change outlives the session that made it and can alter the
+machine for every user, so it should never arrive unseen, from the code or from the
+agent. The two controls cover different paths: the analyzer reads what the
+repository ships, and the deny rules stop what the agent runs while it works. Neither
+is complete on its own: both read text, not what runs, so a path in a variable or a
+command built as a string passes them. The rule is an analyzer rule, not a check that
+can be turned off, so an intended change is recorded where it is made, as a
+suppression with a `Justification` (AN-012).
+
+**Rules out:** blocking registry reads; treating the deny rules as a security
+boundary (running the agent without administrator rights is what keeps HKLM out of
+reach).
+
+**Enforced by:** the analyzer rule tests for AN-018, and the GK08 test that the two
+agent templates pass together.
