@@ -8,6 +8,13 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Added
 
+- `Docs/RUNBOOK.md` ADOPT-14: run the unit tests on a Linux runner. Tests that need
+  Windows carry the tag `Windows`, the unit script excludes it off Windows and writes a
+  JUnit report to `test-results/`, and the section lists what makes the other tests
+  pass on Linux. ADOPT-11 points to it.
+- `Templates/bitbucket-pipelines.yml` keeps `test-results/**` as an artifact, so a
+  unit script's JUnit report shows in the Tests tab, also when a test fails, and marks
+  where a target installs what its unit tests need.
 - The `CommitEmails` config key lists regular expressions a commit's author and
   committer address must each match. GK07 fails a commit in its range that matches
   none, in the pre-push hook and in CI (CM-002, DEC-022). Empty, the default, leaves
@@ -94,6 +101,8 @@ All notable changes to this kit are recorded here. The format follows
   copies into `Gate/`, names the new paths. A target with its config in `Gate/` that
   leaves either `Record` unset moves its record to the new path, or sets the key to
   the old one, before its next pull request.
+- `Docs/PREREQUISITES.md` lists Linux x64 as supported: `Install-GateTool.ps1` and
+  the Bitbucket template, with `-Unit`, have run on hosted Bitbucket runners.
 - AN-014 reads an early exit from the structure of the code (DEC-015). A declining
   `if` that ends in `continue` or `break` for an enclosing loop or `switch` now covers
   the calls after it in that loop. A `return` inside another branch, or inside a
