@@ -89,8 +89,11 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
   with `.properties`, or script help on the line directly below `#Requires`.
 - **AN-014** — In a script or function that declares `SupportsShouldProcess`, every
   call to a cmdlet that accepts `-WhatIf` sits inside `if ($PSCmdlet.ShouldProcess(...))`,
-  follows an early return when `ShouldProcess` declines, or passes `-WhatIf` itself.
-  Without one of these, a caller's `-WhatIf` silently skips the call (DEC-015).
+  follows an early exit when `ShouldProcess` declines, or passes `-WhatIf` itself. An
+  early exit is a declining `if` earlier in a block that holds the call, whose body
+  ends in `return`, `throw` or `exit`, or in `continue` or `break` for an enclosing
+  loop or `switch`. Without one of these, a caller's `-WhatIf` silently skips the call
+  (DEC-015).
   Example: `New-Item -Path $dir -ItemType Directory -WhatIf:$false` for work that
   must happen even during a preview.
 - **AN-015** — Every parameter of a function in a file under a `Public` folder has a
@@ -101,8 +104,8 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
   any version passes (DEC-015).
   Example: `#Requires -Version 7.6` on the first line.
 - **AN-017** — Every verbose message written as a string starts with the name of the
-  command that writes it, in square brackets: an enclosing function, or the script's
-  file name outside every function (DEC-016).
+  command that writes it, in square brackets: an enclosing function, the class that
+  holds a method, or the script's file name outside every function (DEC-016).
   Example: `Write-Verbose "[Get-Thing] Reading $Path."` inside `Get-Thing`.
 - **AN-018** — Code does not change the Windows registry: no provider cmdlet that
   changes an item or property on a registry path, no `RegistryKey` change method, no

@@ -13,8 +13,11 @@ function Measure-AN014WhatIfDecided {
           - Gated: it is inside the body of an if whose condition is
             $PSCmdlet.ShouldProcess(...), or a variable assigned from it in the same
             function.
-          - After an early return: an earlier if in the same function returns or throws
-            when $PSCmdlet.ShouldProcess(...) is declined.
+          - After an early exit: an if that declines $PSCmdlet.ShouldProcess(...), or a
+            variable assigned from it, comes earlier in a block that holds the call, and
+            its body ends in return, throw or exit, or in continue or break for a loop
+            or switch that encloses the if with no script block in between. A labelled
+            continue or break counts for the loop with that label.
           - Explicit: the call passes -WhatIf itself, such as -WhatIf:$false for work
             that must happen even during a preview.
         Without one of these, a caller's -WhatIf reaches the call through
@@ -41,7 +44,10 @@ function Measure-AN014WhatIfDecided {
         Limitation: .NET calls such as [System.IO.File]::WriteAllText, and $env:
         assignments, never honour -WhatIf, so they are not checked; review covers them.
         A function call is not checked: one that supports ShouldProcess makes its own
-        decision. "After an early return" is read from source order, not control flow.
+        decision. An early exit is read from the structure (DEC-015): an exit inside
+        another branch, or a return inside a script block such as ForEach-Object's,
+        covers nothing outside it, and continue inside such a script block is not
+        counted, because it does not move to the next item there.
     #>
     [CmdletBinding()]
     [OutputType([Microsoft.Windows.PowerShell.ScriptAnalyzer.Generic.DiagnosticRecord])]
@@ -136,24 +142,55 @@ function Measure-AN014WhatIfDecided {
         }
         if ($gated) { continue }
 
-        # After an early return: an earlier if that returns or throws when the gate declines.
-        $start = $command.Extent.StartOffset
-        $earlyReturn = @($scope.FindAll({
-            param([System.Management.Automation.Language.Ast]$Node)
-            $Node -is [System.Management.Automation.Language.IfStatementAst] -and
-                $Node.Extent.EndOffset -lt $start
-        }, $true) | Where-Object {
-            $condition = $PSItem.Clauses[0].Item1.Extent.Text.Trim()
-            $declined = ($condition -match "^(-not\s*|!\s*)\(?\s*$shouldProcess") -or
-                @($gateVariables | Where-Object { $condition -match "^(-not\s*|!\s*)\`$$PSItem$" }).Count -gt 0
-            $leaves = @($PSItem.Clauses[0].Item2.FindAll({
-                param([System.Management.Automation.Language.Ast]$Node)
-                $Node -is [System.Management.Automation.Language.ReturnStatementAst] -or
-                    $Node -is [System.Management.Automation.Language.ThrowStatementAst]
-            }, $true)).Count -gt 0
-            $declined -and $leaves
-        }).Count -gt 0
-        if ($earlyReturn) { continue }
+        # After an early exit: walk up from the call. At each block that holds it, look at
+        # the statements before it for an if that declines the gate and then leaves.
+        $covered = $false
+        $node = $command
+        while (-not $covered -and $null -ne $node -and $node -ne $scope) {
+            $block = $node.Parent
+            if ($block -is [System.Management.Automation.Language.StatementBlockAst] -or
+                $block -is [System.Management.Automation.Language.NamedBlockAst]) {
+                foreach ($statement in @($block.Statements)) {
+                    if ($statement.Extent.EndOffset -gt $node.Extent.StartOffset) { break }
+                    if ($statement -isnot [System.Management.Automation.Language.IfStatementAst]) { continue }
+
+                    $condition = $statement.Clauses[0].Item1.Extent.Text.Trim()
+                    $declined = ($condition -match "^(-not\s*|!\s*)\(?\s*$shouldProcess") -or
+                        @($gateVariables | Where-Object { $condition -match "^(-not\s*|!\s*)\`$$PSItem$" }).Count -gt 0
+                    if (-not $declined) { continue }
+
+                    $last = @($statement.Clauses[0].Item2.Statements) | Select-Object -Last 1
+                    if ($null -eq $last) { continue }
+
+                    if ($last -is [System.Management.Automation.Language.ReturnStatementAst] -or
+                        $last -is [System.Management.Automation.Language.ThrowStatementAst] -or
+                        $last -is [System.Management.Automation.Language.ExitStatementAst]) {
+                        $covered = $true
+                        break
+                    }
+
+                    $leavesLoop = $last -is [System.Management.Automation.Language.ContinueStatementAst] -or
+                        $last -is [System.Management.Automation.Language.BreakStatementAst]
+                    if (-not $leavesLoop) { continue }
+
+                    # The loop or switch it applies to must enclose the if within the same
+                    # script block: continue inside a ForEach-Object block does not move to
+                    # the next item.
+                    $label = if ($null -ne $last.Label) { $last.Label.Extent.Text.Trim("'", '"', ':') } else { $null }
+                    for ($up = $statement.Parent; $null -ne $up; $up = $up.Parent) {
+                        if ($up -is [System.Management.Automation.Language.ScriptBlockAst]) { break }
+                        if ($up -is [System.Management.Automation.Language.LabeledStatementAst] -and
+                            ($null -eq $label -or $up.Label -eq $label)) {
+                            $covered = $true
+                            break
+                        }
+                    }
+                    if ($covered) { break }
+                }
+            }
+            $node = $block
+        }
+        if ($covered) { continue }
 
         [Microsoft.Windows.PowerShell.ScriptAnalyzer.Generic.DiagnosticRecord]@{
             Message  = "[AN-014] '$name' accepts -WhatIf but no ShouldProcess decision covers it. Put it inside if (`$PSCmdlet.ShouldProcess(...)), return early when ShouldProcess declines, or pass -WhatIf:`$false if it must run during a preview."

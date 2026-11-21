@@ -210,8 +210,17 @@ findings with nothing to fix. `Public` is the common folder name for exported
 functions, and a repository without one is not checked. The minimum PowerShell
 version is the repository's choice; the kit requires only that each file states it.
 
+An early exit for AN-014 is read from the structure of the code, not its order: a
+declining `if` covers a call only when it comes earlier in a block that holds the call,
+and its body ends in `return`, `throw` or `exit`, or in `continue` or `break` for a
+loop or `switch` that encloses it within the same script block. A loop that skips a
+declined item with `continue` is the common form; an exit inside another branch, or
+inside a `ForEach-Object` block, says nothing about code outside it.
+
 **Rules out:** checking commands that do not declare `SupportsShouldProcess`;
-configuring the public folder; requiring a particular version.
+configuring the public folder; requiring a particular version; counting `continue`
+inside a script block such as `ForEach-Object`'s, where it does not move to the next
+item.
 
 **Enforced by:** the analyzer rule tests for AN-014 to AN-016.
 
@@ -223,7 +232,9 @@ or the script's file name outside every function.
 
 **Why:** a verbose stream from several commands is unreadable without the name of the
 one that wrote each line. A helper defined inside a function often reports as the
-function users called, so either name is accepted.
+function users called, so either name is accepted. For the same reason a class method
+may use its class's name: callers use the class, not the method, and an operator
+searches a log for the class.
 
 **Rules out:** checking a message held in a variable or built another way, which the
 rule cannot read; checking the text after the label.
