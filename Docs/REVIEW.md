@@ -13,21 +13,7 @@ In the commands below, `tools/gate` is where the repository holds the kit.
 
 ## The review path
 
-1. The author finishes the change, every change is committed, and the gate passes
-   locally: `pwsh -NoProfile -File ./tools/gate/Scripts/Invoke-Gate.ps1 -Unit`.
-2. The author runs `pwsh -NoProfile -File ./tools/gate/Scripts/Invoke-ModelReview.ps1`,
-   once. A new Claude Code session, with no access to the author's session, memory or
-   instruction files, reviews the commits the branch adds to the target branch, in the
-   order below. It can read the repository at the reviewed commit and nothing else; it
-   cannot run commands or change files. The script writes the review record named in
-   `gate.config.psd1` (default `Review/LastReview.json`).
-3. The author fixes the findings worth fixing, in new commits, and answers every
-   finding in the record (see "Answering a finding"). The fixes are not reviewed again;
-   the human review judges the Responses. Run the gate again after the fixes.
-4. The author opens the pull request. CI runs the gate with `-Base`, and check GK10
-   fails when the record is missing, does not cover the branch from its merge base, or
-   has an unanswered finding (rule RV-001). The maintainer does the human review with
-   the template's checklist.
+The author's steps are in [RUNBOOK.md](RUNBOOK.md), PR-1.
 
 One review per pull request keeps the cost bounded: each new review is a fresh session
 over the whole change, which finds a different subset of problems each time and never

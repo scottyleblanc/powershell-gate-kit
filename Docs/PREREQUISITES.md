@@ -21,9 +21,8 @@ and gitleaks. gitleaks goes on PATH for that session only.
 
 ## Environment setup
 
-- `gate.config.psd1` at the repository root (see `Templates/gate.config.psd1`).
-- The pre-push hook: copy `Templates/pre-push` to `.githooks/pre-push`, then
-  `git config core.hooksPath .githooks` once per clone.
+- The config file and the pre-push hook: see [RUNBOOK.md](RUNBOOK.md), ADOPT-4 and
+  ADOPT-5.
 - No environment variables are read.
 
 ## Test framework
