@@ -192,6 +192,29 @@ Describe 'Invoke-Gate' -Tag 'Static' {
             $result.Text | Should -Match '\[PASS\] gate: all 7 checks passed'
             $result.ExitCode | Should -Be 0
         }
+
+        It 'skips every check the Quick key lists, and only with -Quick' {
+            $config = "@{ SchemaVersion = 1; StaticTests = 'tests'; Checks = @{ Files = `$true }; Quick = @('GK03', 'GK04', 'GK15') }"
+            $repo = New-FixtureRepo -Name 'quicklist' -Config $config
+            Set-FixtureFile -Repo $repo -Path 'tests/Fails.Tests.ps1' -Text "Describe 'x' { It 'fails' { 1 | Should -Be 2 } }`n"
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Quick')
+            $result.Text | Should -Match '\[OFF\]  GK04 static : skipped by -Quick; CI runs it'
+            $result.Text | Should -Match '\[OFF\]  GK15 files : skipped by -Quick; CI runs it'
+            $result.Text | Should -Match '\[PASS\] GK05 secrets'
+            $result.ExitCode | Should -Be 0
+
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[FAIL\] GK04 static'
+            $result.Text | Should -Match '\[PASS\] GK15 files'
+            $result.ExitCode | Should -Be 1
+        }
+
+        It 'CF-003 fails a Quick entry for a check that always runs' {
+            $repo   = New-FixtureRepo -Name 'quickbad' -Config "@{ SchemaVersion = 1; Quick = @('GK03', 'GK05') }"
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Quick')
+            $result.Text | Should -Match "Quick may list only GK03, GK04, GK09, GK14, GK15; 'GK05' always runs \(CF-003\)"
+            $result.ExitCode | Should -Be 1
+        }
     }
 
     Context 'GK05 to GK07 secrets, commits and messages' {

@@ -109,4 +109,8 @@
     Files = @{
         Exclude = @()      # for example @('tests/fixtures/')
     }
+
+    # The checks the pre-push hook (-Quick) skips; CI runs them. Any of GK03, GK04,
+    # GK09, GK14 and GK15. The config, tool, secret and permission checks always run.
+    Quick = @('GK03')
 }
