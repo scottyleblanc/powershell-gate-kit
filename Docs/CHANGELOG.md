@@ -13,11 +13,10 @@ All notable changes to this kit are recorded here. The format follows
   checks each folder exists (CF-004) and lists at least one rule name (CF-003).
 - `Invoke-Gate.ps1 -Quick` skips GK03 and reports it `[OFF]`. `Templates/pre-push`
   passes it, so a push no longer waits for the analyzer; CI runs without it (DEC-011).
-  The kit's own hook keeps GK03, because the kit has no CI. A target repository refreshes its `.githooks/pre-push` from
-  the template to pick this up.
+  The kit's own hook keeps GK03, because the kit has no CI. A target repository
+  refreshes its `.githooks/pre-push` from the template to pick this up.
 - `LICENSE`: the MIT licence (DEC-010), and a Licence section in the README. KT-001
   skips `LICENSE`, the one file that names the copyright holder.
-
 - `Scripts/Invoke-Gate.ps1`: checks GK01 to GK11, configured by `gate.config.psd1`.
 - `Scripts/Install-GateTool.ps1` for Windows x64 and Linux x64.
 - `Scripts/Invoke-ModelReview.ps1`, `Scripts/Update-AnalyzerBaseline.ps1`,
@@ -37,6 +36,9 @@ All notable changes to this kit are recorded here. The format follows
   each saying what it does; the tool install and the permanent `PATH` entry for
   gitleaks; a worked `Analyzer.Paths` example and the `Checks` table; every path given
   in full, relative to the target's root folder.
+- README installation adds a step for the AI agent permission files: copying
+  `Templates/claude-settings.json` to `.claude/settings.json` and
+  `Templates/agent-permissions.psd1` into the target, checked by GK08.
 
 ### Fixed
 
