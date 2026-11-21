@@ -298,4 +298,47 @@ Describe 'Custom analyzer rules' -Tag 'Static' {
     ) {
         @(Get-RuleHit -Script $Script -Rule 'Measure-AN018NoRegistryWrite').Count | Should -Be 0
     }
+
+    It 'Measure-AN014WhatIfDecided accepts an early exit: <Name>' -ForEach @(
+        @{ Name = 'continue after a declined ShouldProcess in a loop'; Body = 'foreach ($i in $Items) { if (-not $PSCmdlet.ShouldProcess($i, "Install")) { Write-Output "skip"; continue } Remove-Item -Path $i; New-Item -Path $i -ItemType Directory }' }
+        @{ Name = 'break in a loop'; Body = 'foreach ($i in $Items) { if (-not $PSCmdlet.ShouldProcess($i, "Install")) { break } Remove-Item -Path $i }' }
+        @{ Name = 'a labelled continue for the outer loop'; Body = ':outer foreach ($a in $Items) { foreach ($b in $a) { if (-not $PSCmdlet.ShouldProcess($b, "Install")) { continue outer } Remove-Item -Path $b } }' }
+        @{ Name = 'break in a switch clause'; Body = 'switch ($Items) { default { if (-not $PSCmdlet.ShouldProcess($PSItem, "Install")) { break } Remove-Item -Path $PSItem } }' }
+        @{ Name = 'return inside a ForEach-Object block, for a call in the same block'; Body = '$Items | ForEach-Object { if (-not $PSCmdlet.ShouldProcess($PSItem, "Install")) { return } Remove-Item -Path $PSItem }' }
+        @{ Name = 'return before a pipeline whose block holds the call'; Body = 'if (-not $PSCmdlet.ShouldProcess("x", "Install")) { return }; $Items | ForEach-Object { Remove-Item -Path $PSItem }' }
+        @{ Name = 'throw in a nested block, for a call later in that block'; Body = 'if ($Items) { if (-not $PSCmdlet.ShouldProcess("x", "Install")) { throw "declined" } Remove-Item -Path "x" }' }
+    ) {
+        $script = "function Install-Thing { [CmdletBinding(SupportsShouldProcess)] param([object[]]`$Items) $Body }"
+        @(Get-RuleHit -Script $script -Rule 'Measure-AN014WhatIfDecided').Count | Should -Be 0
+    }
+
+    It 'Measure-AN014WhatIfDecided reports a call no early exit covers: <Name>' -ForEach @(
+        @{ Name = 'the if body does not leave'; Body = 'foreach ($i in $Items) { if (-not $PSCmdlet.ShouldProcess($i, "Install")) { Write-Output "skip" } Remove-Item -Path $i }' }
+        @{ Name = 'a call after the loop that continue leaves'; Body = 'foreach ($i in $Items) { if (-not $PSCmdlet.ShouldProcess($i, "Install")) { continue } }; Remove-Item -Path "x"' }
+        @{ Name = 'continue inside a ForEach-Object block'; Body = '$Items | ForEach-Object { if (-not $PSCmdlet.ShouldProcess($PSItem, "Install")) { continue } Remove-Item -Path $PSItem }' }
+        @{ Name = 'a call after the inner loop that continue leaves'; Body = 'foreach ($a in $Items) { foreach ($b in $a) { if (-not $PSCmdlet.ShouldProcess($b, "Install")) { continue } }; Remove-Item -Path $a }' }
+        @{ Name = 'a call after the switch that break leaves'; Body = 'foreach ($i in $Items) { switch ($i) { default { if (-not $PSCmdlet.ShouldProcess($i, "Install")) { break } } }; Remove-Item -Path $i }' }
+        @{ Name = 'return inside a ForEach-Object block, for a call after the pipeline'; Body = '$Items | ForEach-Object { if (-not $PSCmdlet.ShouldProcess($PSItem, "Install")) { return } }; Remove-Item -Path "x"' }
+        @{ Name = 'return in another branch'; Body = 'if ($Items.Count -gt 5) { if (-not $PSCmdlet.ShouldProcess("x", "Install")) { return } }; Remove-Item -Path "x"' }
+        @{ Name = 'a return that is not the last statement of the if body'; Body = 'if (-not $PSCmdlet.ShouldProcess("x", "Install")) { if ($Items) { return } }; Remove-Item -Path "x"' }
+    ) {
+        $script = "function Install-Thing { [CmdletBinding(SupportsShouldProcess)] param([object[]]`$Items) $Body }"
+        @(Get-RuleHit -Script $script -Rule 'Measure-AN014WhatIfDecided').Count | Should -Be 1
+    }
+
+    It 'Measure-AN017VerboseLabelled accepts in a class method: <Name>' -ForEach @(
+        @{ Name = 'the class name'; Script = 'class RotationJob { [string] GetOracleHome() { Write-Verbose "[RotationJob] Reading."; return "x" } }' }
+        @{ Name = 'the method name'; Script = 'class RotationJob { [string] GetOracleHome() { Write-Verbose "[GetOracleHome] Reading."; return "x" } }' }
+        @{ Name = 'the class name in a static method'; Script = 'class RotationJob { static [string] Find() { Write-Verbose "[RotationJob] Finding."; return "x" } }' }
+        @{ Name = 'the class name in a constructor'; Script = 'class RotationJob { RotationJob() { Write-Verbose "[RotationJob] Created." } }' }
+    ) {
+        @(Get-RuleHit -Script $Script -Rule 'Measure-AN017VerboseLabelled').Count | Should -Be 0
+    }
+
+    It 'Measure-AN017VerboseLabelled reports <Name>' -ForEach @(
+        @{ Name = 'another name in a class method'; Script = 'class RotationJob { [string] GetOracleHome() { Write-Verbose "[OtherName] Reading."; return "x" } }' }
+        @{ Name = 'the class name in a function outside the class'; Script = 'class RotationJob { [string] Name() { return "x" } }; function Get-Thing { [CmdletBinding()] param() Write-Verbose "[RotationJob] Reading." }' }
+    ) {
+        @(Get-RuleHit -Script $Script -Rule 'Measure-AN017VerboseLabelled').Count | Should -Be 1
+    }
 }
