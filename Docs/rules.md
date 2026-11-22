@@ -229,3 +229,7 @@ These hold for the kit's own files and are checked by the kit's own tests.
 - **KT-001** — The kit carries no owner branding, copyright line or rule IDs from
   another repository's rule set, except the copyright line in `LICENSE` (DEC-010).
   Example: `Tests/Unbranded.Tests.ps1` fails on a company name in a comment.
+- **KT-002** — The `Version` row in `README.md` and `Docs/SECURITY.md` names the
+  `ModuleVersion` in `Gate/version.psd1`.
+  Example: `Tests/KitVersion.Tests.ps1` fails on `| Version | 0.1.0 (tagged on merge) |`
+  while the version is `0.2.0`.

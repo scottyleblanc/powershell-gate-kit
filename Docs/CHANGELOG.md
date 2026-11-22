@@ -6,6 +6,11 @@ All notable changes to this kit are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- KT-002 (`Tests/KitVersion.Tests.ps1`): the `Version` row in `README.md` and
+  `Docs/SECURITY.md` names the `ModuleVersion` in `Gate/version.psd1`.
+
 ### Fixed
 
 - `README.md` and `Docs/SECURITY.md` name the kit's version, 0.2.0, in their
