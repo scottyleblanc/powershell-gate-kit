@@ -6,8 +6,8 @@
 .DESCRIPTION
     Reads and checks gate.config.psd1 (rules CF-001 to CF-005), resolves the paths it
     names, runs PSScriptAnalyzer with the kit's settings and rules, reads the analyzer
-    baseline (AN-001), matches changed paths against config paths, and builds the
-    agent instruction file (AG-001).
+    baseline (AN-001), matches changed paths against config paths, works out the next
+    release version (VR-003), and builds the agent instruction file (AG-001).
 
 .NOTES
     **Invocation:** lib helper — dot-sourced by the scripts in Scripts\. Defines
@@ -30,7 +30,7 @@ $script:GateConfigDefault = [ordered]@{
     CommitEmails    = @()
     Permissions     = ''
     Review          = [ordered]@{ Record = 'Review/LastReview.json'; Exempt = @() }
-    Version         = [ordered]@{ Manifest = ''; Changelog = ''; NotesFiles = @(); TagPrefix = 'v'; PackageInputs = @() }
+    Version         = [ordered]@{ Manifest = ''; Changelog = ''; NotesFiles = @(); TagPrefix = 'v'; PackageInputs = @(); FromCommits = $false }
     Unit            = [ordered]@{ Script = '' }
     Evidence        = [ordered]@{ Script = ''; Record = 'Evidence/LastRun.json'; Paths = @() }
     Package         = [ordered]@{ Manifest = ''; Build = '' }
@@ -278,6 +278,7 @@ function Import-GateConfig {
         }
         foreach ($path in @($config.Version.NotesFiles)) { $mustExist.Add(@('Version.NotesFiles', $path, 'Leaf')) }
         if ($config.Version.TagPrefix -notmatch '^[A-Za-z0-9._-]*$') { $problems.Add('gate.config.psd1: Version.TagPrefix may hold only letters, digits, ., _ and - (CF-005)') }
+        if ($config.Version.FromCommits -isnot [bool]) { $problems.Add('gate.config.psd1: Version.FromCommits must be $true or $false (CF-003)') }
     }
     if ($config.Checks.Unit) {
         if (-not $config.Unit.Script) { $problems.Add('gate.config.psd1: Checks.Unit is on, so Unit.Script must name a script (CF-005)') }
@@ -537,6 +538,100 @@ function Select-GateChangedPath {
         $covered = @($Inputs | Where-Object { $PSItem -and ($path -eq $PSItem -or ($PSItem.EndsWith('/') -and $path.StartsWith($PSItem))) })
         if ($covered.Count -gt 0) { $path }
     }
+}
+
+function Get-GateNextVersion {
+    <#
+    .SYNOPSIS
+        Works out the version the commits since the latest tag call for (rule VR-003).
+    .DESCRIPTION
+        Finds the highest MAJOR.MINOR.PATCH tag with the prefix that HEAD contains, reads
+        every commit since it, merges left out, and takes the largest bump any of them
+        calls for, by its Conventional Commits type:
+          - a 'type!:' subject or a 'BREAKING CHANGE:' footer: major, or minor while the
+            major number is 0
+          - feat: minor
+          - fix or sec: patch
+          - any other type, or a subject that is not Conventional Commits: no release
+        With no tag yet, the first release is 0.1.0.
+    .PARAMETER RepoRoot
+        The repository root.
+    .PARAMETER TagPrefix
+        The text before the version in a release tag, such as 'v'.
+    .EXAMPLE
+        $next = Get-GateNextVersion -RepoRoot $repoRoot -TagPrefix 'v'
+        if (-not $next.Problem) { $next.Next }
+    .OUTPUTS
+        PSCustomObject with Latest (the latest tag's version, or '' when there is none),
+        Next (the version the commits call for), Bump (none, patch, minor or major),
+        Commits (how many commits were read) and Problem ('' unless git failed, in which
+        case Next is '').
+    .NOTES
+        Needs git on the PATH and at least one commit. Fails closed: when git cannot
+        list the tags or the commits, Problem says so and Next is empty.
+    #>
+    [CmdletBinding()]
+    [OutputType([PSCustomObject])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$RepoRoot,
+
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string]$TagPrefix
+    )
+
+    Set-StrictMode -Version Latest
+    $ErrorActionPreference = 'Stop'
+
+    $result = [ordered]@{ Latest = ''; Next = ''; Bump = 'none'; Commits = 0; Problem = '' }
+
+    $tagOut = @(& git -C $RepoRoot tag --list "$TagPrefix*" --merged HEAD 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        $result.Problem = 'git could not list the tags HEAD contains (VR-003)'
+        return [PSCustomObject]$result
+    }
+    $pattern = "^$([regex]::Escape($TagPrefix))(\d+\.\d+\.\d+)$"
+    $latest  = @($tagOut | ForEach-Object { if ($PSItem -match $pattern) { [version]$Matches[1] } }) | Sort-Object -Descending | Select-Object -First 1
+
+    $separator = '--gate-commit-end--'
+    $range     = if ($null -ne $latest) { "$TagPrefix$latest..HEAD" } else { 'HEAD' }
+    $logOut    = @(& git -C $RepoRoot log --no-merges "--format=%B%n$separator" $range 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        $result.Problem = 'git could not list the commits since the latest tag (VR-003)'
+        return [PSCustomObject]$result
+    }
+
+    $messages = @(($logOut -join "`n") -split [regex]::Escape($separator) | ForEach-Object { $PSItem.Trim() } | Where-Object { $PSItem })
+    $rank     = 0
+    foreach ($message in $messages) {
+        $subject = ($message -split "`n", 2)[0]
+        $parsed  = [regex]::Match($subject, '^(?<type>[a-z]+)(\([^)]*\))?(?<bang>!)?: \S')
+        if (-not $parsed.Success) { continue }
+        $type     = $parsed.Groups['type'].Value
+        $breaking = $parsed.Groups['bang'].Success -or [regex]::IsMatch($message, '(?m)^BREAKING[ -]CHANGE: ')
+        $level    = if ($breaking) { 3 }
+        elseif ($type -eq 'feat') { 2 }
+        elseif ($type -in @('fix', 'sec')) { 1 }
+        else { 0 }
+        if ($level -gt $rank) { $rank = $level }
+    }
+
+    $result.Commits = $messages.Count
+    $result.Bump    = @('none', 'patch', 'minor', 'major')[$rank]
+    if ($null -eq $latest) {
+        $result.Next = '0.1.0'
+        return [PSCustomObject]$result
+    }
+    $result.Latest = "$latest"
+    $result.Next   = switch ($rank) {
+        0 { "$latest" }
+        1 { "$($latest.Major).$($latest.Minor).$($latest.Build + 1)" }
+        2 { "$($latest.Major).$($latest.Minor + 1).0" }
+        3 { if ($latest.Major -eq 0) { "0.$($latest.Minor + 1).0" } else { "$($latest.Major + 1).0.0" } }
+    }
+    [PSCustomObject]$result
 }
 
 function Get-GateAgentInstruction {

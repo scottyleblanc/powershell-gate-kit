@@ -29,7 +29,8 @@
                         rules (PM-001, PM-002)
       GK09 version      Optional. The manifest, the newest CHANGELOG release and every
                         listed .NOTES block name the same version; with -Base, the tags
-                        too (VR-001, VR-002)
+                        too; with Version.FromCommits, it is the version the commits
+                        since the latest tag call for (VR-001 to VR-003)
       GK10 review       On by default; only with -Base. The second-model review record
                         covers the branch and every finding is answered (RV-001)
       GK11 unit         Optional; only with -Unit. The repository's unit test script
@@ -470,6 +471,34 @@ else {
     if (-not $newest.Success) { $versionProblems.Add("$($config.Version.Changelog): no release heading (VR-001)") }
     elseif ($newest.Groups[1].Value -ne $moduleVersion) { $versionProblems.Add("$($config.Version.Changelog): newest release $($newest.Groups[1].Value) (VR-001)") }
 
+    # VR-003: with Version.FromCommits on, the version is the one the commits since the
+    # latest tag call for, by their Conventional Commits types (DEC-025).
+    $bumpNote = ''
+    if ($config.Version.FromCommits -and $versionValid) {
+        if ($null -eq $git -or -not $hasHead) {
+            $versionProblems.Add('VR-003 not run: it needs git and at least one commit')
+        }
+        else {
+            $next = Get-GateNextVersion -RepoRoot $repoRoot -TagPrefix $prefix
+            $from = if ($next.Latest) { "$prefix$($next.Latest)" } else { 'the first commit (no tag yet)' }
+            if ($next.Problem) {
+                $versionProblems.Add($next.Problem)
+            }
+            elseif ($next.Next -ne $moduleVersion) {
+                $versionProblems.Add("version $moduleVersion, but the commits since $from call for $($next.Next) ($($next.Bump)): run Update-ReleaseVersion.ps1 (VR-003)")
+            }
+            elseif (-not $next.Latest) {
+                $bumpNote = '; the first release, no tag yet'
+            }
+            elseif ($next.Bump -eq 'none') {
+                $bumpNote = "; no release since $from, as the commits call for"
+            }
+            else {
+                $bumpNote = "; $($next.Bump) release since $from, as the commits call for"
+            }
+        }
+    }
+
     $tagNote = ''
     if ($Base) {
         if ($null -ne $notReady) {
@@ -510,7 +539,7 @@ else {
         }
     }
     $versionSummary = if ($versionProblems.Count -eq 0) {
-        "$moduleVersion in the manifest, $(@($config.Version.NotesFiles).Count) .NOTES block(s) and the CHANGELOG$tagNote"
+        "$moduleVersion in the manifest, $(@($config.Version.NotesFiles).Count) .NOTES block(s) and the CHANGELOG$bumpNote$tagNote"
     }
     else {
         "version $moduleVersion does not agree everywhere"

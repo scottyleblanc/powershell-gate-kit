@@ -42,6 +42,7 @@ Paths as they are in a target.
 | `tools/gate/Scripts/Install-GateTool.ps1` | Installs the pinned tool versions; gitleaks is hash-checked |
 | `tools/gate/Scripts/Invoke-ModelReview.ps1` | Runs the second-model review once and writes the review record |
 | `tools/gate/Scripts/Update-AnalyzerBaseline.ps1` | Records the current analyzer findings as the baseline |
+| `tools/gate/Scripts/Update-ReleaseVersion.ps1` | Sets the version and CHANGELOG release heading the commits since the latest tag call for (GK09, VR-003) |
 | `tools/gate/Scripts/Invoke-StaticTest.ps1` | Runs the static test folder for GK04 |
 | `tools/gate/Scripts/Invoke-EvidenceRun.ps1` | Runs the evidence script and writes the evidence record for GK12 |
 | `tools/gate/Scripts/Export-AgentInstruction.ps1` | Builds `AGENTS.md` from the standards files for GK14 |
@@ -92,9 +93,9 @@ The pre-push hook does not pass it (DEC-021).
 
 | Item | Value |
 |---|---|
-| Version | unreleased (first tag pending) |
+| Version | 0.1.0 (tagged on merge) |
 | Last audit | not yet audited |
-| Tests | 211 static tests: 52 gate behaviour cases, 98 analyzer rule cases, 61 unbranded file checks |
+| Tests | 217 static tests: 55 gate behaviour cases, 98 analyzer rule cases, 64 unbranded file checks |
 | Open items | See [Docs/SECURITY.md](Docs/SECURITY.md#open-items) |
 
 ## Licence

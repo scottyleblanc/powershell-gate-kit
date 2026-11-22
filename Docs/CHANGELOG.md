@@ -6,8 +6,22 @@ All notable changes to this kit are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-22
+
 ### Added
 
+- GK09 rule VR-003, behind the new `Version.FromCommits` key (off by default): the
+  version is the one the Conventional Commits types since the latest tag call for. A
+  breaking change is major (minor before 1.0), `feat` minor, `fix` and `sec` patch,
+  other types no release; with no tag yet, `0.1.0` (DEC-025).
+- `Scripts/Update-ReleaseVersion.ps1` sets that version in `Version.Manifest` and gives
+  the `[Unreleased]` CHANGELOG entries their `## [x.y.z] - date` heading.
+- The kit is versioned: `Gate/version.psd1` holds its version, its config turns on
+  `Checks.Version` and `Version.FromCommits`, and `.github/workflows/release.yml` tags
+  `main` with the version after each merge. Every `feat`, `fix` or `sec` pull request
+  is a release (DEC-025, `Docs/VERSIONING.md`).
+- The Bitbucket template is proved on a copy of an existing module repository hosted
+  on Bitbucket: existing findings baselined, the gate passing, the template run.
 - `Docs/RUNBOOK.md` ADOPT-14: run the unit tests on a Linux runner. Tests that need
   Windows carry the tag `Windows`, the unit script excludes it off Windows and writes a
   JUnit report to `test-results/`, and the section lists what makes the other tests

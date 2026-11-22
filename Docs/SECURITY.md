@@ -2,10 +2,10 @@
 
 | Item | Value |
 |---|---|
-| Version | unreleased (first tag pending) |
+| Version | 0.1.0 (tagged on merge) |
 | Last audit | not yet audited |
 | Findings resolved | none recorded |
-| Tests | 211 static tests |
+| Tests | 217 static tests |
 
 ## 1. Secret scanning
 
@@ -69,6 +69,13 @@ run commands or write files.
 **Status:** implemented (`Templates/github/gate.yml`, and the kit's own `.github/workflows/gate.yml`, built from it).
 **How:** a read-only token, the `pull_request` trigger only, no secrets, credentials not
 kept in the checkout, and the one action pinned to a full commit SHA.
+
+The kit's `.github/workflows/release.yml` is the one job with a write token
+(`contents: write`), which it needs to push a release tag (DEC-025). It runs only on a
+push to `main`, which the ruleset allows only through a pull request whose `gate`
+check passed. It runs no code from the repository: it reads `Gate/version.psd1` with
+`Import-PowerShellDataFile` and adds a tag only when the version is not yet tagged,
+never moving or deleting one. Its one action is pinned to a full commit SHA.
 
 ## 7. Package contents
 

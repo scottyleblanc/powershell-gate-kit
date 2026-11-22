@@ -19,7 +19,7 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 | GK06 | commits | Always | SE-002 |
 | GK07 | messages | Always | CM-001; CM-002 when `CommitEmails` is set |
 | GK08 | permissions | Always | PM-001, PM-002 |
-| GK09 | version | When `Checks.Version` is on; not with `-Quick` while `Quick` lists it | VR-001; VR-002 with `-Base` |
+| GK09 | version | When `Checks.Version` is on; not with `-Quick` while `Quick` lists it | VR-001; VR-002 with `-Base`; VR-003 with `Version.FromCommits` |
 | GK10 | review | When `Checks.Review` is on (the default), with `-Base` | RV-001 |
 | GK11 | unit | When `Checks.Unit` is on, with `-Unit` | UT-001 |
 | GK12 | evidence | When `Checks.Evidence` is on, with `-Base` | EV-001 |
@@ -165,6 +165,13 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
   since the base.
   Example: a change under `source/` while the version is still the tagged `1.2.0`
   fails until the version is bumped.
+- **VR-003** — With `Version.FromCommits` on: the version is the one the commits since
+  the latest tag HEAD contains call for, merges left out. A `type!:` subject or a
+  `BREAKING CHANGE:` footer is major (minor while the major number is 0), `feat` is
+  minor, `fix` and `sec` are patch, and any other type is no release. With no tag
+  yet, the version is `0.1.0`. `Update-ReleaseVersion.ps1` sets it (DEC-025).
+  Example: a `feat` commit since `v0.3.1` with the version still `0.3.1` fails until
+  it is `0.4.0`.
 
 ## Review (GK10)
 

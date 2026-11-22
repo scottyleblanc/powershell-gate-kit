@@ -34,10 +34,16 @@ first-class; no release is tagged with one open.
       does not allow (CM-002, DEC-022), on for the kit itself, with tests
 - [x] First run of the Linux path: `Install-GateTool.ps1` and the gate, with `-Unit`,
       on a hosted Bitbucket runner
+- [x] Prove on a copy of an existing module repository hosted on Bitbucket: baseline
+      the existing findings, the gate passes, run the Bitbucket template
 - [x] The kit's own config and permission record in `Gate/`, and its own committed
       agent settings checked by GK08 (DEC-024)
-- [ ] Prove on a copy of an existing module repository hosted on Bitbucket: baseline
-      the existing findings, the gate passes, run the Bitbucket template
+- [x] Releases numbered from the commit types: VR-003 in GK09, `Update-ReleaseVersion.ps1`
+      and the kit's release workflow, which tags `main` after each merge (DEC-025),
+      with tests
+
+## v0.2.0
+
 - [ ] [SEC] Pin the Bitbucket template's image by digest
 - [ ] Verify which Bitbucket plan enforces a required pipeline as a merge check, and
       record it in the template
