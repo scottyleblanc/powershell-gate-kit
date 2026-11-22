@@ -111,6 +111,6 @@ This section is for work on the kit itself, in its own repository, where paths h
 in [Docs/CHANGELOG.md](Docs/CHANGELOG.md), and commit and version rules in
 [Docs/VERSIONING.md](Docs/VERSIONING.md). Decisions are in
 [Docs/decisions.md](Docs/decisions.md). The kit is gated by itself, configured by its
-own `gate.config.psd1`: turn on the hook with `git config core.hooksPath .githooks`.
+own `Gate/gate.config.psd1`: turn on the hook with `git config core.hooksPath .githooks`.
 The kit's committed `.claude/settings.json` applies the agent templates to work on the
 kit itself, so an agent cannot `git push`; push branches yourself.

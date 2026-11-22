@@ -89,7 +89,7 @@ How to add the gate to a repository that already has code, and how to keep it wo
    mkdir -p Gate && cp tools/gate/Templates/gate.config.psd1 Gate/gate.config.psd1
    ```
 
-   The gate reads `gate.config.psd1` at the root or in `Gate/`, never both (CF-001).  Paths inside it are relative to the root either way.  Every key is commented in the file.  `tools/gate/gate.config.psd1` configures the kit itself, and the gate in the target ignores it.
+   The gate reads `gate.config.psd1` at the root or in `Gate/`, never both (CF-001).  Paths inside it are relative to the root either way.  Every key is commented in the file.  `tools/gate/Gate/gate.config.psd1` configures the kit itself, and the gate in the target ignores it.
 2. List the code folders in `Analyzer.Paths`.  Until you do, GK03 checks no code: it reports "no files to analyze" and passes.  For a module whose code is in `source/` with helper scripts in `scripts/`:
 
    ```powershell

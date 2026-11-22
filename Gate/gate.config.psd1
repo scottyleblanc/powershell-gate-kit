@@ -29,7 +29,7 @@
     CommitEmails    = @('^\d+\+[A-Za-z0-9-]+@users\.noreply\.github\.com$', '^noreply@github\.com$')
 
     # GK08: the kit's own committed agent settings match this record (DEC-024).
-    Permissions     = 'agent-permissions.psd1'
+    Permissions     = 'Gate/agent-permissions.psd1'
 
     Review = @{
         Record = 'Review/LastReview.json'

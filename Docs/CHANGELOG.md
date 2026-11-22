@@ -16,8 +16,8 @@ All notable changes to this kit are recorded here. The format follows
   unit script's JUnit report shows in the Tests tab, also when a test fails, and marks
   where a target installs what its unit tests need.
 - The kit commits its own agent settings, `.claude/settings.json`, and their record,
-  `agent-permissions.psd1`, both the templates with the kit's own gate path. The kit's
-  config names the record under `Permissions`, so GK08 checks them (DEC-024).
+  `Gate/agent-permissions.psd1`, both the templates with the kit's own gate path. The
+  kit's config names the record under `Permissions`, so GK08 checks them (DEC-024).
 - The `CommitEmails` config key lists regular expressions a commit's author and
   committer address must each match. GK07 fails a commit in its range that matches
   none, in the pre-push hook and in CI (CM-002, DEC-022). Empty, the default, leaves
@@ -97,6 +97,10 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Changed
 
+- The kit's own `gate.config.psd1` moved from the root to `Gate/`, beside its
+  permission record, so the kit's root holds no second copy of a template (DEC-006).
+  Targets change nothing: their gate reads their own config, not
+  `tools/gate/Gate/gate.config.psd1`.
 - With `gate.config.psd1` in `Gate/`, the review and evidence records default to
   `Gate/Review/LastReview.json` and `Gate/Evidence/LastRun.json` (DEC-023). A config
   at the root keeps `Review/LastReview.json` and `Evidence/LastRun.json`, and a

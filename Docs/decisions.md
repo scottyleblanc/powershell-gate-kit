@@ -62,9 +62,11 @@ says which rule set it belongs to.
 
 ## DEC-006 — The kit is gated by itself
 
-The kit's root holds its own `gate.config.psd1`, and its pre-push hook runs its own
+The kit holds its own `Gate/gate.config.psd1`, and its pre-push hook runs its own
 `Scripts/Invoke-Gate.ps1`. Its static tests run the gate against throwaway
-repositories, one case per rule.
+repositories, one case per rule. The kit's own gate files sit in `Gate/`, as a
+target's do (DEC-018), so the root holds no second copy of a template; in a target
+they sit under `tools/gate/Gate/`, which the target's gate does not read.
 
 **Why:** a gate script that is not itself held to the gate drifts first.
 
@@ -398,8 +400,8 @@ the record under Gate/Evidence/ when the config is in Gate/".
 
 ## DEC-024 — The kit commits its own agent settings
 
-The kit commits `.claude/settings.json` and its record, `agent-permissions.psd1`, at
-its root, and its config names the record under `Permissions`, so GK08 checks them
+The kit commits `.claude/settings.json` and its record, `Gate/agent-permissions.psd1`,
+and its config names the record under `Permissions`, so GK08 checks them
 on every push and pull request. Both are the templates with the kit's own gate path
 (`./Scripts/Invoke-Gate.ps1`). The rest of `.claude/` stays ignored.
 

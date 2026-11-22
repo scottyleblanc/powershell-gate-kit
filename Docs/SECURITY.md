@@ -50,7 +50,7 @@ file: every deny rule present, no allow rule or setting beyond the documented on
 committed settings file with no entry fails. The templates deny registry changes by
 the agent (`reg add` and the like, `regedit`, and changing cmdlets on `HK*:` and
 `Registry::` paths); AN-018 fails the same changes in the code. The kit commits its
-own copy of both templates, `.claude/settings.json` and `agent-permissions.psd1`, and
+own copy of both templates, `.claude/settings.json` and `Gate/agent-permissions.psd1`, and
 GK08 checks them (DEC-024).
 **Contract:** loosening the rules means changing the permissions file in the same diff.
 
