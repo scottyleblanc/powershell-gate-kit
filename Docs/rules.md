@@ -160,6 +160,10 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 - **VR-001** — The manifest's `ModuleVersion`, the newest CHANGELOG release and each
   listed `Version :` line name the same version.
   Example: `ModuleVersion = '1.2.0'` with `## [1.1.0]` newest in the CHANGELOG fails.
+  With `Version.Unreleased` on, an `## [Unreleased]` heading above the newest release
+  stands for a higher manifest version while no tag names it (DEC-026).
+  Example: `ModuleVersion = '1.2.0'` with `## [Unreleased]` above `## [1.1.0]` passes
+  until `v1.2.0` is tagged, then fails until `## [1.2.0]` is added.
 - **VR-002** — With `-Base`: the version is not lower than the latest tag, and a
   version already tagged is in the branch's history with no package input changed
   since the base.

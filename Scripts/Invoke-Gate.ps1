@@ -28,9 +28,11 @@
       GK08 permissions  The committed agent permission files match the documented
                         rules (PM-001, PM-002)
       GK09 version      Optional. The manifest, the newest CHANGELOG release and every
-                        listed .NOTES block name the same version; with -Base, the tags
-                        too; with Version.FromCommits, it is the version the commits
-                        since the latest tag call for (VR-001 to VR-003)
+                        listed .NOTES block name the same version, or with
+                        Version.Unreleased an [Unreleased] heading stands for one not
+                        yet tagged; with -Base, the tags too; with Version.FromCommits,
+                        it is the version the commits since the latest tag call for
+                        (VR-001 to VR-003)
       GK10 review       On by default; only with -Base. The second-model review record
                         covers the branch and every finding is answered (RV-001)
       GK11 unit         Optional; only with -Unit. The repository's unit test script
@@ -444,7 +446,8 @@ Add-Result -Id 'GK08' -Name 'permissions' -Passed ($permissionProblems.Count -eq
 
 # -- GK09 version ------------------------------------------------------------
 # VR-001: the manifest, the newest CHANGELOG release and each listed .NOTES block name
-# the same version. VR-002, with -Base: the version is not lower than the latest tag;
+# the same version; with Version.Unreleased, an [Unreleased] heading may stand for an
+# untagged manifest version (DEC-026). VR-002, with -Base: the version is not lower than the latest tag;
 # a version already tagged is in HEAD's history, and no package input changed since
 # Base, so a released number never labels a different package.
 
@@ -467,9 +470,37 @@ else {
         elseif ($found.Groups[1].Value -ne $moduleVersion) { $versionProblems.Add("${relative}: Version $($found.Groups[1].Value) (VR-001)") }
     }
 
-    $newest = [regex]::Match([System.IO.File]::ReadAllText((Resolve-GatePath -RepoRoot $repoRoot -RelativePath $config.Version.Changelog)), '(?m)^## \[(\d+\.\d+\.\d+)\]')
+    $changelogText = [System.IO.File]::ReadAllText((Resolve-GatePath -RepoRoot $repoRoot -RelativePath $config.Version.Changelog))
+    $newest        = [regex]::Match($changelogText, '(?m)^## \[(\d+\.\d+\.\d+)\]')
+    $unreleasedNote = ''
     if (-not $newest.Success) { $versionProblems.Add("$($config.Version.Changelog): no release heading (VR-001)") }
-    elseif ($newest.Groups[1].Value -ne $moduleVersion) { $versionProblems.Add("$($config.Version.Changelog): newest release $($newest.Groups[1].Value) (VR-001)") }
+    elseif ($newest.Groups[1].Value -ne $moduleVersion) {
+        # With Version.Unreleased on, an [Unreleased] heading above the newest release
+        # stands for a higher version that no tag names yet (DEC-026).
+        $unreleased = [regex]::Match($changelogText, '(?m)^## \[Unreleased\]')
+        $useUnreleased = $config.Version.Unreleased -and $versionValid -and $unreleased.Success -and
+            $unreleased.Index -lt $newest.Index -and [version]$moduleVersion -gt [version]$newest.Groups[1].Value
+        if (-not $useUnreleased) {
+            $versionProblems.Add("$($config.Version.Changelog): newest release $($newest.Groups[1].Value) (VR-001)")
+        }
+        elseif ($null -eq $git -or -not $hasHead) {
+            # Fail closed: the [Unreleased] allowance holds only while no tag names the version.
+            $versionProblems.Add("$($config.Version.Changelog): newest release $($newest.Groups[1].Value), and git is needed to show $prefix$moduleVersion is not tagged (VR-001)")
+        }
+        else {
+            $ownTag  = @(& $git.Source -C $repoRoot tag --list "$prefix$moduleVersion" 2>$null)
+            $tagExit = $LASTEXITCODE
+            if ($tagExit -ne 0) {
+                $versionProblems.Add('git could not list the tags (VR-001)')
+            }
+            elseif ($ownTag.Count -gt 0) {
+                $versionProblems.Add("$($config.Version.Changelog): newest release $($newest.Groups[1].Value), but $prefix$moduleVersion is tagged, so it needs its own release heading (VR-001)")
+            }
+            else {
+                $unreleasedNote = " ($moduleVersion under [Unreleased], not yet tagged)"
+            }
+        }
+    }
 
     # VR-003: with Version.FromCommits on, the version is the one the commits since the
     # latest tag call for, by their Conventional Commits types (DEC-025).
@@ -539,7 +570,7 @@ else {
         }
     }
     $versionSummary = if ($versionProblems.Count -eq 0) {
-        "$moduleVersion in the manifest, $(@($config.Version.NotesFiles).Count) .NOTES block(s) and the CHANGELOG$bumpNote$tagNote"
+        "$moduleVersion in the manifest, $(@($config.Version.NotesFiles).Count) .NOTES block(s) and the CHANGELOG$unreleasedNote$bumpNote$tagNote"
     }
     else {
         "version $moduleVersion does not agree everywhere"

@@ -449,3 +449,28 @@ GK09 asks for the number after.
 
 **Enforced by:** the gate tests under "GK09 version" for VR-003, and the
 `Update-ReleaseVersion.ps1` test.
+
+## DEC-026 — An [Unreleased] heading can stand for a version not yet tagged
+
+With `Version.Unreleased` on, VR-001 accepts an `## [Unreleased]` CHANGELOG heading
+above the newest release as the manifest's version, while that version is higher
+than the newest release and no tag names it. Once the version is tagged, it needs its
+own `## [x.y.z]` heading, as before. The key is off by default and cannot be on with
+`Version.FromCommits`.
+
+**Why:** a target that releases at the end of a line of work keeps the line's version
+in its manifest and its entries under `[Unreleased]`, as Keep a Changelog has it,
+for weeks or months. Without the key, VR-001 fails that target for the whole line, so
+it cannot turn GK09 on until the release, and loses VR-002 too. Allowing the heading
+only while the version is untagged keeps a released number tied to its own heading.
+
+**Rules out:** renaming the heading to `## [x.y.z] - Unreleased`, which leaves Keep a
+Changelog and every reference to `[Unreleased]`; accepting `[Unreleased]` for a
+tagged version; using it with `Version.FromCommits`, where every merge is a release
+and `Update-ReleaseVersion.ps1` gives it its heading.
+
+**Breaks:** VR-001 now needs git when the key is on and the newest release differs
+from the manifest; without git it fails closed.
+
+**Enforced by:** the gate tests under "GK09 version" for `Version.Unreleased`, and the
+CF-003 test for the key with `Version.FromCommits`.

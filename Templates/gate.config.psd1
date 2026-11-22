@@ -72,7 +72,10 @@
     # the version, and a change to a PackageInputs path (a file, or a folder ending in /)
     # under a version already tagged fails until the version is bumped. FromCommits on
     # also requires the version the Conventional Commits types since the latest tag
-    # call for (VR-003); Scripts/Update-ReleaseVersion.ps1 sets it.
+    # call for (VR-003); Scripts/Update-ReleaseVersion.ps1 sets it. Unreleased on lets an
+    # '## [Unreleased]' heading above the newest release stand for a higher version no
+    # tag names yet, for a repository that releases at the end of a line of work
+    # (DEC-026); it cannot be on with FromCommits.
     Version = @{
         Manifest      = ''
         Changelog     = ''
@@ -80,6 +83,7 @@
         TagPrefix     = 'v'
         PackageInputs = @()
         FromCommits   = $false
+        Unreleased    = $false
     }
 
     # GK11. A script that runs the unit tests and exits 0 only when they pass. It owns
