@@ -39,7 +39,8 @@ and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
   the right shape.
   Example: a misspelt `Analyser` key fails rather than being ignored. `Quick` may list
   only GK03, GK04, GK09, GK14 and GK15, so `Quick = @('GK05')` fails: the config, tool,
-  secret and permission checks always run (DEC-020).
+  secret and permission checks always run (DEC-020). `Version.Unreleased` and
+  `Version.FromCommits` cannot both be on (DEC-026).
 - **CF-004** — Every path in the config is relative, uses `/`, stays inside the
   repository, and names a file or folder that exists.
   Example: `StaticTests = '../shared-tests'` fails.

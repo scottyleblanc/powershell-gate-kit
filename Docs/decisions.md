@@ -469,8 +469,8 @@ Changelog and every reference to `[Unreleased]`; accepting `[Unreleased]` for a
 tagged version; using it with `Version.FromCommits`, where every merge is a release
 and `Update-ReleaseVersion.ps1` gives it its heading.
 
-**Breaks:** VR-001 now needs git when the key is on and the newest release differs
-from the manifest; without git it fails closed.
+**Breaks:** VR-001 now reads the tags when the key is on and the newest release
+differs from the manifest; when git cannot list them, it fails closed.
 
 **Enforced by:** the gate tests under "GK09 version" for `Version.Unreleased`, and the
 CF-003 test for the key with `Version.FromCommits`.

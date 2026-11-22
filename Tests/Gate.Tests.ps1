@@ -423,6 +423,17 @@ Describe 'Invoke-Gate' -Tag 'Static' {
             $result.ExitCode | Should -Be 1
         }
 
+        It 'Version.Unreleased passes a repository with no commit yet' {
+            $config = "@{ SchemaVersion = 1; Checks = @{ Version = `$true }; Version = @{ Manifest = 'source/Thing.psd1'; Changelog = 'CHANGELOG.md'; Unreleased = `$true } }"
+            $repo   = New-FixtureRepo -Name 'vrunreleasednogit' -Config $config
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.psd1' -Text "@{ ModuleVersion = '1.2.0' }"
+            Set-FixtureFile -Repo $repo -Path 'CHANGELOG.md' -Text "# Changelog`n`n## [Unreleased]`n`n## [1.1.0] - 2026-01-01`n"
+
+            # No commit: no tag can name the version, so the [Unreleased] heading stands for it.
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[PASS\] GK09 version : 1\.2\.0 .*under \[Unreleased\], not yet tagged'
+        }
+
         It 'Version.Unreleased does not cover <Case>' -ForEach @(
             @{ Case = 'a manifest version lower than the newest release'; Version = '1.0.0'; Changelog = "## [Unreleased]`n`n## [1.1.0] - 2026-01-01`n"; Key = '$true' }
             @{ Case = 'an [Unreleased] heading below the newest release'; Version = '1.2.0'; Changelog = "## [1.1.0] - 2026-01-01`n`n## [Unreleased]`n"; Key = '$true' }

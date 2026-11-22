@@ -483,7 +483,7 @@ else {
         if (-not $useUnreleased) {
             $versionProblems.Add("$($config.Version.Changelog): newest release $($newest.Groups[1].Value) (VR-001)")
         }
-        elseif ($null -eq $git -or -not $hasHead) {
+        elseif ($null -eq $git) {
             # Fail closed: the [Unreleased] allowance holds only while no tag names the version.
             $versionProblems.Add("$($config.Version.Changelog): newest release $($newest.Groups[1].Value), and git is needed to show $prefix$moduleVersion is not tagged (VR-001)")
         }
