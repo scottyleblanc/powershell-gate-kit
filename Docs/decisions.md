@@ -395,3 +395,21 @@ until the record is moved there or the key names the old path.
 **Enforced by:** the gate tests "RV-001 reads the record from Gate/Review/ when the
 config is in Gate/, unless Review.Record names another" and "EV-001 writes and reads
 the record under Gate/Evidence/ when the config is in Gate/".
+
+## DEC-024 — The kit commits its own agent settings
+
+The kit commits `.claude/settings.json` and its record, `agent-permissions.psd1`, at
+its root, and its config names the record under `Permissions`, so GK08 checks them
+on every push and pull request. Both are the templates with the kit's own gate path
+(`./Scripts/Invoke-Gate.ps1`). The rest of `.claude/` stays ignored.
+
+**Why:** the kit is gated by itself (DEC-006), and an agent works on the kit as it
+does on a target. With the templates in force on the kit, a change to the template
+rules is felt on the kit first. In a target the two files sit under `tools/gate/`,
+where GK08 does not look (it reads `.claude/settings.json` at the root only), and
+Claude Code loads them only in a session started in that folder.
+
+**Rules out:** a looser rule set for the kit than the one it ships; committing
+`.claude/settings.local.json` or anything else under `.claude/`.
+
+**Enforced by:** GK08 on the kit's own pushes and pull requests.

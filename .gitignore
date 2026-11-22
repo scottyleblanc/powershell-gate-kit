@@ -1,5 +1,7 @@
-# Local agent instructions and settings: never committed.
-.claude/
+# Local agent instructions and settings: never committed. The shared agent settings,
+# .claude/settings.json, are committed and checked by GK08 (DEC-024).
+.claude/*
+!.claude/settings.json
 CLAUDE.md
 
 # Test output.
