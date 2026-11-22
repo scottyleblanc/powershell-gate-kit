@@ -30,7 +30,7 @@ $script:GateConfigDefault = [ordered]@{
     CommitEmails    = @()
     Permissions     = ''
     Review          = [ordered]@{ Record = 'Review/LastReview.json'; Exempt = @() }
-    Version         = [ordered]@{ Manifest = ''; Changelog = ''; NotesFiles = @(); TagPrefix = 'v'; PackageInputs = @(); FromCommits = $false }
+    Version         = [ordered]@{ Manifest = ''; Changelog = ''; NotesFiles = @(); TagPrefix = 'v'; PackageInputs = @(); FromCommits = $false; Unreleased = $false }
     Unit            = [ordered]@{ Script = '' }
     Evidence        = [ordered]@{ Script = ''; Record = 'Evidence/LastRun.json'; Paths = @() }
     Package         = [ordered]@{ Manifest = ''; Build = '' }
@@ -279,6 +279,10 @@ function Import-GateConfig {
         foreach ($path in @($config.Version.NotesFiles)) { $mustExist.Add(@('Version.NotesFiles', $path, 'Leaf')) }
         if ($config.Version.TagPrefix -notmatch '^[A-Za-z0-9._-]*$') { $problems.Add('gate.config.psd1: Version.TagPrefix may hold only letters, digits, ., _ and - (CF-005)') }
         if ($config.Version.FromCommits -isnot [bool]) { $problems.Add('gate.config.psd1: Version.FromCommits must be $true or $false (CF-003)') }
+        if ($config.Version.Unreleased -isnot [bool]) { $problems.Add('gate.config.psd1: Version.Unreleased must be $true or $false (CF-003)') }
+        elseif ($config.Version.Unreleased -and $config.Version.FromCommits -eq $true) {
+            $problems.Add('gate.config.psd1: Version.Unreleased and Version.FromCommits cannot both be on: one leaves a version under [Unreleased] until it is tagged, the other gives every release its heading as it merges (CF-003)')
+        }
     }
     if ($config.Checks.Unit) {
         if (-not $config.Unit.Script) { $problems.Add('gate.config.psd1: Checks.Unit is on, so Unit.Script must name a script (CF-005)') }

@@ -1,0 +1,43 @@
+{
+  "SchemaVersion": 1,
+  "Commit": "ad8b8ebe113b472f9a60104df7b2e9ba31a11513",
+  "BaseCommit": "ee8373d0be1a50c7335b8b052cf1fab0c262391c",
+  "Base": "origin/main",
+  "Completed": true,
+  "RunAtUtc": "2026-11-22T03:25:43Z",
+  "Reviewer": {
+    "Tool": "Claude Code",
+    "Version": "2.1.330",
+    "Model": "claude-opus-5-5",
+    "Effort": "medium"
+  },
+  "PromptSha256": "8ab921bdbb1e0696f03db8d55f493f4e4ce3fa115b4637fe9ee7308c92a0f4a2",
+  "FilesReviewed": 9,
+  "Turns": 14,
+  "PermissionDenials": 0,
+  "Summary": "The change adds an opt-in GK09 key, `Version.Unreleased`. With it on, VR-001 accepts an `## [Unreleased]` CHANGELOG heading above the newest release as long as the manifest version is higher and no tag names it yet. Turning it on together with `Version.FromCommits` fails CF-003. The change also records DEC-026, updates rules.md, the RUNBOOK, the template config and the help text, and releases the kit as 0.2.0. I read REVIEW.md, rules.md, the commits and the diff, then compared the GK09 and Import-GateConfig code and the new Pester tests with what DEC-026 says. The logic matches the decision: the key is off by default, the version must be valid and higher, the heading must sit above the newest release, the gate fails closed without git, and a version that is already tagged is refused. The minor bump to 0.2.0 matches a feat commit. I found only two small gaps: a document that leaves out the new rule, and a test that is missing.",
+  "Findings": [
+    {
+      "Id": "F1",
+      "Severity": "Low",
+      "Step": "Intent",
+      "Rule": "CF-003",
+      "File": "Docs/rules.md",
+      "Line": 38,
+      "Title": "rules.md does not say that CF-003 now forbids turning on Version.Unreleased and Version.FromCommits together.",
+      "Detail": "GateLib.ps1:283 adds a new CF-003 failure when both keys are on, and DEC-026 and the CHANGELOG cite CF-003 for it. The CF-003 entry in Docs/rules.md still only says the config holds the template's keys 'each of the right shape', and its only special case is the `Quick` restriction. That wording does not cover a ban on two keys being on at once. rules.md is the list of what the gate checks, so it should name this rule. Fix: add a sentence or example to CF-003 saying that `Version.Unreleased` and `Version.FromCommits` cannot both be `$true` (DEC-026).",
+      "Response": "Fixed: rules.md CF-003 names the Version.Unreleased with Version.FromCommits restriction (DEC-026), d76e0f1."
+    },
+    {
+      "Id": "F2",
+      "Severity": "Low",
+      "Step": "Tests",
+      "Rule": "none",
+      "File": "Tests/Gate.Tests.ps1",
+      "Line": 228,
+      "Title": "No test covers the fail-closed branches that DEC-026 lists under Breaks: git missing or no HEAD, and git failing to list the tags.",
+      "Detail": "Invoke-Gate.ps1:486-495 adds two failure paths for when the allowance applies but the gate cannot prove the version is untagged: `$git` is null or there is no HEAD, and `git tag --list` exits non-zero. DEC-026 calls the fail-closed behaviour part of the decision ('without git it fails closed'). The new tests only use a working git repository with commits, so the gate could start passing instead of failing on these paths and no test would notice. Fix: add a case that runs the gate on a fixture with no commits (or with git unavailable), with the key on and an [Unreleased] heading, and asserts the 'git is needed to show ... is not tagged (VR-001)' failure.",
+      "Response": "Fixed: a repository with no commit has no tag, so it no longer fails closed; a test covers it (d76e0f1). Accepted for the rest: the no-git branch cannot be reached, because the gate finds the repository root with git before any check runs, and a failing tag listing cannot be forced in a fixture; the matching VR-002 branch is untested for the same reason. DEC-026 Breaks now names only the tag-listing failure."
+    }
+  ]
+}

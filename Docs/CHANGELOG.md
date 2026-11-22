@@ -6,6 +6,16 @@ All notable changes to this kit are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-22
+
+### Added
+
+- GK09 key `Version.Unreleased` (off by default): an `## [Unreleased]` CHANGELOG
+  heading above the newest release stands for a higher manifest version while no tag
+  names it, so a target that releases at the end of a line of work can turn GK09 on
+  mid-line. Once the version is tagged, it needs its own heading. The key cannot be on
+  with `Version.FromCommits` (CF-003; DEC-026).
+
 ## [0.1.0] - 2026-11-22
 
 ### Added

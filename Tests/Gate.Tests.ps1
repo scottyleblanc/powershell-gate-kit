@@ -399,6 +399,75 @@ Describe 'Invoke-Gate' -Tag 'Static' {
             $result.ExitCode | Should -Be 1
         }
 
+        It 'Version.Unreleased lets [Unreleased] stand for an untagged version, and fails once it is tagged' {
+            $config = "@{ SchemaVersion = 1; Checks = @{ Version = `$true; Review = `$false }; Version = @{ Manifest = 'source/Thing.psd1'; Changelog = 'CHANGELOG.md'; PackageInputs = @('source/'); Unreleased = `$true } }"
+            $repo   = New-FixtureRepo -Name 'vrunreleased' -Config $config
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.psd1' -Text "@{ ModuleVersion = '1.1.0' }"
+            Set-FixtureFile -Repo $repo -Path 'CHANGELOG.md' -Text "# Changelog`n`n## [Unreleased]`n`n## [1.1.0] - 2026-01-01`n"
+            $null = Save-FixtureCommit -Repo $repo -Message 'release 1.1.0'
+            $null = Invoke-FixtureGit -Repo $repo -Argument @('tag', 'v1.1.0')
+
+            # The next line of work: the manifest moves to 1.2.0, its entries stay under [Unreleased].
+            $null = Invoke-FixtureGit -Repo $repo -Argument @('switch', '--quiet', '-c', 'feature')
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.psd1' -Text "@{ ModuleVersion = '1.2.0' }"
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.ps1' -Text "# new work`n"
+            Set-FixtureFile -Repo $repo -Path 'CHANGELOG.md' -Text "# Changelog`n`n## [Unreleased]`n`n### Added`n`n- New work.`n`n## [1.1.0] - 2026-01-01`n"
+            $null   = Save-FixtureCommit -Repo $repo -Message 'add new work'
+            $result = Invoke-FixtureGate -Repo $repo -Argument @('-Base', 'main')
+            $result.Text | Should -Match '\[PASS\] GK09 version : 1\.2\.0 .*\(1\.2\.0 under \[Unreleased\], not yet tagged\).*not yet tagged, latest tag v1\.1\.0'
+            $result.ExitCode | Should -Be 0
+
+            $null   = Invoke-FixtureGit -Repo $repo -Argument @('tag', 'v1.2.0')
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'newest release 1\.1\.0, but v1\.2\.0 is tagged, so it needs its own release heading \(VR-001\)'
+            $result.ExitCode | Should -Be 1
+        }
+
+        It 'Version.Unreleased passes a repository with no commit yet' {
+            $config = "@{ SchemaVersion = 1; Checks = @{ Version = `$true }; Version = @{ Manifest = 'source/Thing.psd1'; Changelog = 'CHANGELOG.md'; Unreleased = `$true } }"
+            $repo   = New-FixtureRepo -Name 'vrunreleasednogit' -Config $config
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.psd1' -Text "@{ ModuleVersion = '1.2.0' }"
+            Set-FixtureFile -Repo $repo -Path 'CHANGELOG.md' -Text "# Changelog`n`n## [Unreleased]`n`n## [1.1.0] - 2026-01-01`n"
+
+            # No commit: no tag can name the version, so the [Unreleased] heading stands for it.
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[PASS\] GK09 version : 1\.2\.0 .*under \[Unreleased\], not yet tagged'
+        }
+
+        It 'Version.Unreleased does not cover <Case>' -ForEach @(
+            @{ Case = 'a manifest version lower than the newest release'; Version = '1.0.0'; Changelog = "## [Unreleased]`n`n## [1.1.0] - 2026-01-01`n"; Key = '$true' }
+            @{ Case = 'an [Unreleased] heading below the newest release'; Version = '1.2.0'; Changelog = "## [1.1.0] - 2026-01-01`n`n## [Unreleased]`n"; Key = '$true' }
+            @{ Case = 'a CHANGELOG with no [Unreleased] heading'; Version = '1.2.0'; Changelog = "## [1.1.0] - 2026-01-01`n"; Key = '$true' }
+            @{ Case = 'anything while the key is off'; Version = '1.2.0'; Changelog = "## [Unreleased]`n`n## [1.1.0] - 2026-01-01`n"; Key = '$false' }
+        ) {
+            $config = "@{ SchemaVersion = 1; Checks = @{ Version = `$true }; Version = @{ Manifest = 'source/Thing.psd1'; Changelog = 'CHANGELOG.md'; Unreleased = $Key } }"
+            $repo   = New-FixtureRepo -Name "vrnotunreleased$([guid]::NewGuid().ToString('N').Substring(0, 8))" -Config $config
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.psd1' -Text "@{ ModuleVersion = '$Version' }"
+            Set-FixtureFile -Repo $repo -Path 'CHANGELOG.md' -Text "# Changelog`n`n$Changelog"
+            $null   = Save-FixtureCommit -Repo $repo -Message 'set the version'
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'CHANGELOG\.md: newest release 1\.1\.0 \(VR-001\)'
+            $result.ExitCode | Should -Be 1
+        }
+
+        It 'CF-003 fails Version.Unreleased with Version.FromCommits, and a key that is not a bool' {
+            $config = "@{ SchemaVersion = 1; Checks = @{ Version = `$true }; Version = @{ Manifest = 'source/Thing.psd1'; Changelog = 'CHANGELOG.md'; FromCommits = `$true; Unreleased = `$true } }"
+            $repo   = New-FixtureRepo -Name 'vrboth' -Config $config
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.psd1' -Text "@{ ModuleVersion = '0.1.0' }"
+            Set-FixtureFile -Repo $repo -Path 'CHANGELOG.md' -Text "# Changelog`n`n## [0.1.0] - 2026-01-01`n"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'Version\.Unreleased and Version\.FromCommits cannot both be on.*\(CF-003\)'
+            $result.ExitCode | Should -Be 1
+
+            $config = "@{ SchemaVersion = 1; Checks = @{ Version = `$true }; Version = @{ Manifest = 'source/Thing.psd1'; Changelog = 'CHANGELOG.md'; Unreleased = 'yes' } }"
+            $repo   = New-FixtureRepo -Name 'vrnotbool' -Config $config
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.psd1' -Text "@{ ModuleVersion = '0.1.0' }"
+            Set-FixtureFile -Repo $repo -Path 'CHANGELOG.md' -Text "# Changelog`n`n## [0.1.0] - 2026-01-01`n"
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'Version\.Unreleased must be \$true or \$false \(CF-003\)'
+            $result.ExitCode | Should -Be 1
+        }
+
         It 'VR-003 fails a version the commits since the latest tag do not call for, and passes the one they do' {
             $config = "@{ SchemaVersion = 1; Checks = @{ Version = `$true }; Version = @{ Manifest = 'source/Thing.psd1'; Changelog = 'CHANGELOG.md'; FromCommits = `$true } }"
             $repo   = New-FixtureRepo -Name 'vrcommits' -Config $config
