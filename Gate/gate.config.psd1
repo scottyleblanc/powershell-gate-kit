@@ -8,9 +8,20 @@
         # Off for the kit itself: its pull requests carry no model review record
         # (DEC-020). The template default stays on for target repositories.
         Review  = $false
-        Version = $false
+        Version = $true
         Unit    = $false
         Files   = $true
+    }
+
+    # GK09: every merged feat, fix or sec pull request is a release. The version is the
+    # one its commits call for since the latest tag (VR-003), set by
+    # Scripts/Update-ReleaseVersion.ps1; .github/workflows/release.yml tags main with it
+    # (DEC-025). No PackageInputs: VR-003 decides when the number moves.
+    Version = @{
+        Manifest    = 'Gate/version.psd1'
+        Changelog   = 'Docs/CHANGELOG.md'
+        TagPrefix   = 'v'
+        FromCommits = $true
     }
 
     Analyzer = @{
@@ -29,7 +40,7 @@
     CommitEmails    = @('^\d+\+[A-Za-z0-9-]+@users\.noreply\.github\.com$', '^noreply@github\.com$')
 
     # GK08: the kit's own committed agent settings match this record (DEC-024).
-    Permissions     = 'agent-permissions.psd1'
+    Permissions     = 'Gate/agent-permissions.psd1'
 
     Review = @{
         Record = 'Review/LastReview.json'

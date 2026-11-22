@@ -6,8 +6,22 @@ All notable changes to this kit are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-22
+
 ### Added
 
+- GK09 rule VR-003, behind the new `Version.FromCommits` key (off by default): the
+  version is the one the Conventional Commits types since the latest tag call for. A
+  breaking change is major (minor before 1.0), `feat` minor, `fix` and `sec` patch,
+  other types no release; with no tag yet, `0.1.0` (DEC-025).
+- `Scripts/Update-ReleaseVersion.ps1` sets that version in `Version.Manifest` and gives
+  the `[Unreleased]` CHANGELOG entries their `## [x.y.z] - date` heading.
+- The kit is versioned: `Gate/version.psd1` holds its version, its config turns on
+  `Checks.Version` and `Version.FromCommits`, and `.github/workflows/release.yml` tags
+  `main` with the version after each merge. Every `feat`, `fix` or `sec` pull request
+  is a release (DEC-025, `Docs/VERSIONING.md`).
+- The Bitbucket template is proved on a copy of an existing module repository hosted
+  on Bitbucket: existing findings baselined, the gate passing, the template run.
 - `Docs/RUNBOOK.md` ADOPT-14: run the unit tests on a Linux runner. Tests that need
   Windows carry the tag `Windows`, the unit script excludes it off Windows and writes a
   JUnit report to `test-results/`, and the section lists what makes the other tests
@@ -16,8 +30,8 @@ All notable changes to this kit are recorded here. The format follows
   unit script's JUnit report shows in the Tests tab, also when a test fails, and marks
   where a target installs what its unit tests need.
 - The kit commits its own agent settings, `.claude/settings.json`, and their record,
-  `agent-permissions.psd1`, both the templates with the kit's own gate path. The kit's
-  config names the record under `Permissions`, so GK08 checks them (DEC-024).
+  `Gate/agent-permissions.psd1`, both the templates with the kit's own gate path. The
+  kit's config names the record under `Permissions`, so GK08 checks them (DEC-024).
 - The `CommitEmails` config key lists regular expressions a commit's author and
   committer address must each match. GK07 fails a commit in its range that matches
   none, in the pre-push hook and in CI (CM-002, DEC-022). Empty, the default, leaves
@@ -97,6 +111,10 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Changed
 
+- The kit's own `gate.config.psd1` moved from the root to `Gate/`, beside its
+  permission record, so the kit's root holds no second copy of a template (DEC-006).
+  Targets change nothing: their gate reads their own config, not
+  `tools/gate/Gate/gate.config.psd1`.
 - With `gate.config.psd1` in `Gate/`, the review and evidence records default to
   `Gate/Review/LastReview.json` and `Gate/Evidence/LastRun.json` (DEC-023). A config
   at the root keeps `Review/LastReview.json` and `Evidence/LastRun.json`, and a

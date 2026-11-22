@@ -70,13 +70,16 @@
     # GK09. Manifest holds ModuleVersion; Changelog has '## [x.y.z]' release headings;
     # NotesFiles each hold a 'Version : x.y.z' line. With -Base, tags are TagPrefix plus
     # the version, and a change to a PackageInputs path (a file, or a folder ending in /)
-    # under a version already tagged fails until the version is bumped.
+    # under a version already tagged fails until the version is bumped. FromCommits on
+    # also requires the version the Conventional Commits types since the latest tag
+    # call for (VR-003); Scripts/Update-ReleaseVersion.ps1 sets it.
     Version = @{
         Manifest      = ''
         Changelog     = ''
         NotesFiles    = @()
         TagPrefix     = 'v'
         PackageInputs = @()
+        FromCommits   = $false
     }
 
     # GK11. A script that runs the unit tests and exits 0 only when they pass. It owns

@@ -89,7 +89,7 @@ How to add the gate to a repository that already has code, and how to keep it wo
    mkdir -p Gate && cp tools/gate/Templates/gate.config.psd1 Gate/gate.config.psd1
    ```
 
-   The gate reads `gate.config.psd1` at the root or in `Gate/`, never both (CF-001).  Paths inside it are relative to the root either way.  Every key is commented in the file.  `tools/gate/gate.config.psd1` configures the kit itself, and the gate in the target ignores it.
+   The gate reads `gate.config.psd1` at the root or in `Gate/`, never both (CF-001).  Paths inside it are relative to the root either way.  Every key is commented in the file.  `tools/gate/Gate/gate.config.psd1` configures the kit itself, and the gate in the target ignores it.
 2. List the code folders in `Analyzer.Paths`.  Until you do, GK03 checks no code: it reports "no files to analyze" and passes.  For a module whose code is in `source/` with helper scripts in `scripts/`:
 
    ```powershell
@@ -108,7 +108,7 @@ How to add the gate to a repository that already has code, and how to keep it wo
    | Key | Check | What it does | Starts | Turn it on when | Also set |
    |---|---|---|---|---|---|
    | `Review` | GK10 | On a pull request, requires a second-model review record covering the branch, with every finding answered ([REVIEW.md](REVIEW.md)) | on | You use the review step; it needs Claude Code installed.  Set `$false` if you do not | — |
-   | `Version` | GK09 | The module version is the same in the manifest, the newest CHANGELOG release and the listed notes files | off | The target is a module with a CHANGELOG | `Version.Manifest`, `Version.Changelog` |
+   | `Version` | GK09 | The module version is the same in the manifest, the newest CHANGELOG release and the listed notes files; with `Version.FromCommits`, it is the version the commits since the latest tag call for (run `Update-ReleaseVersion.ps1`) | off | The target is a module with a CHANGELOG | `Version.Manifest`, `Version.Changelog` |
    | `Unit` | GK11 | Runs the target's unit test script when the gate is run with `-Unit` | off | The target has a script that runs its tests and exits 0 only when they pass | `Unit.Script` |
    | `Evidence` | GK12 | On a pull request that changes a path in `Evidence.Paths`, requires a committed record of a passing run of `Evidence.Script`, on a clean tree, with no later change but the records | off | The target has tests CI cannot run, such as integration tests against a local database | `Evidence.Script`, `Evidence.Paths` |
    | `Package` | GK13 | On a pull request, builds the module package in a temporary folder and fails unless it holds exactly the files the manifest's `FileList` names | off | The target is a module published to a gallery | `Package.Manifest`; `Package.Build` if the module is built first |

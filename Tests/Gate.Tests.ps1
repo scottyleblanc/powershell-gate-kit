@@ -398,6 +398,77 @@ Describe 'Invoke-Gate' -Tag 'Static' {
             $result.Text | Should -Match 'a package input changed since main but v1.2.0 is already released'
             $result.ExitCode | Should -Be 1
         }
+
+        It 'VR-003 fails a version the commits since the latest tag do not call for, and passes the one they do' {
+            $config = "@{ SchemaVersion = 1; Checks = @{ Version = `$true }; Version = @{ Manifest = 'source/Thing.psd1'; Changelog = 'CHANGELOG.md'; FromCommits = `$true } }"
+            $repo   = New-FixtureRepo -Name 'vrcommits' -Config $config
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.psd1' -Text "@{ ModuleVersion = '0.1.0' }"
+            Set-FixtureFile -Repo $repo -Path 'CHANGELOG.md' -Text "# Changelog`n`n## [0.1.0] - 2026-01-01`n"
+            $null = Save-FixtureCommit -Repo $repo -Message 'feat: first release'
+            $null = Invoke-FixtureGit -Repo $repo -Argument @('tag', 'v0.1.0')
+
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.ps1' -Text "# repaired`n"
+            $null   = Save-FixtureCommit -Repo $repo -Message 'fix(thing): repair it'
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'version 0\.1\.0, but the commits since v0\.1\.0 call for 0\.1\.1 \(patch\)'
+            $result.ExitCode | Should -Be 1
+
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.ps1' -Text "# extended`n"
+            $null   = Save-FixtureCommit -Repo $repo -Message "feat: add a switch`n`nA body line."
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'call for 0\.2\.0 \(minor\): run Update-ReleaseVersion\.ps1 \(VR-003\)'
+
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.psd1' -Text "@{ ModuleVersion = '0.2.0' }"
+            Set-FixtureFile -Repo $repo -Path 'CHANGELOG.md' -Text "# Changelog`n`n## [0.2.0] - 2026-01-02`n`n## [0.1.0] - 2026-01-01`n"
+            $null   = Save-FixtureCommit -Repo $repo -Message 'chore(release): 0.2.0'
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[PASS\] GK09 version : 0\.2\.0 .*minor release since v0\.1\.0'
+            $result.ExitCode | Should -Be 0
+        }
+
+        It 'VR-003 starts at 0.1.0 with no tag, makes docs no release, and counts a breaking change as minor before 1.0' {
+            $config = "@{ SchemaVersion = 1; Checks = @{ Version = `$true }; Version = @{ Manifest = 'source/Thing.psd1'; Changelog = 'CHANGELOG.md'; FromCommits = `$true } }"
+            $repo   = New-FixtureRepo -Name 'vrbreaking' -Config $config
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.psd1' -Text "@{ ModuleVersion = '0.1.0' }"
+            Set-FixtureFile -Repo $repo -Path 'CHANGELOG.md' -Text "# Changelog`n`n## [0.1.0] - 2026-01-01`n"
+            $null   = Save-FixtureCommit -Repo $repo -Message 'docs: describe the thing'
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[PASS\] GK09 version : .*the first release, no tag yet'
+
+            $null = Invoke-FixtureGit -Repo $repo -Argument @('tag', 'v0.1.0')
+            Set-FixtureFile -Repo $repo -Path 'README.md' -Text "# Thing`n"
+            $null   = Save-FixtureCommit -Repo $repo -Message 'docs: add a readme'
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[PASS\] GK09 version : .*no release since v0\.1\.0'
+
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.ps1' -Text "# key removed`n"
+            $null   = Save-FixtureCommit -Repo $repo -Message "refactor: drop a key`n`nBREAKING CHANGE: the Old key is gone."
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match 'call for 0\.2\.0 \(major\): run Update-ReleaseVersion\.ps1 \(VR-003\)'
+            $result.ExitCode | Should -Be 1
+        }
+
+        It 'Update-ReleaseVersion.ps1 sets the version and the CHANGELOG release heading, and GK09 then passes' {
+            $config = "@{ SchemaVersion = 1; Checks = @{ Version = `$true }; Version = @{ Manifest = 'source/Thing.psd1'; Changelog = 'CHANGELOG.md'; FromCommits = `$true } }"
+            $repo   = New-FixtureRepo -Name 'vrscript' -Config $config
+            Set-FixtureFile -Repo $repo -Path 'source/Thing.psd1' -Text "@{`n    ModuleVersion = '0.1.0'`n}`n"
+            Set-FixtureFile -Repo $repo -Path 'CHANGELOG.md' -Text "# Changelog`n`n## [Unreleased]`n`n## [0.1.0] - 2026-01-01`n"
+            $null = Save-FixtureCommit -Repo $repo -Message 'feat: first release'
+            $null = Invoke-FixtureGit -Repo $repo -Argument @('tag', 'v0.1.0')
+            Set-FixtureFile -Repo $repo -Path 'CHANGELOG.md' -Text "# Changelog`n`n## [Unreleased]`n`n### Fixed`n`n- The thing.`n`n## [0.1.0] - 2026-01-01`n"
+            $null = Save-FixtureCommit -Repo $repo -Message 'fix: repair the thing'
+
+            $script = Join-Path -Path $repo -ChildPath 'tools' -AdditionalChildPath 'gate', 'Scripts', 'Update-ReleaseVersion.ps1'
+            $output = @(& pwsh -NoProfile -File $script 2>&1) -join "`n"
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match '\[INFO\] version 0\.1\.1 \(patch since v0\.1\.0\)'
+            [System.IO.File]::ReadAllText((Join-Path -Path $repo -ChildPath 'source' -AdditionalChildPath 'Thing.psd1')) | Should -Match "(?m)^    ModuleVersion = '0\.1\.1'$"
+            [System.IO.File]::ReadAllText((Join-Path -Path $repo -ChildPath 'CHANGELOG.md')) | Should -Match '## \[Unreleased\]\n\n## \[0\.1\.1\] - \d{4}-\d{2}-\d{2}\n\n### Fixed\n\n- The thing\.'
+
+            $null   = Save-FixtureCommit -Repo $repo -Message 'chore(release): 0.1.1'
+            $result = Invoke-FixtureGate -Repo $repo
+            $result.Text | Should -Match '\[PASS\] GK09 version'
+        }
     }
 
     Context 'GK10 review' {

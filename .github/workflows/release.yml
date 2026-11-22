@@ -1,0 +1,54 @@
+# Tags main with the kit's version after each merge (DEC-025). A pull request sets the
+# version with Scripts/Update-ReleaseVersion.ps1 and GK09 (VR-003) checks it before the
+# merge; this job only adds the tag. When the version is already tagged (a pull request
+# that was not a release), it does nothing.
+#
+# [SEC] The only job with a write token: contents: write, needed to push the tag. It
+# runs only on a push to main, which the ruleset allows only through a pull request
+# whose gate check passed; it runs no code from the repository, reads one data file
+# with Import-PowerShellDataFile, and the one action used is pinned to a full commit
+# SHA. It never moves or deletes a tag.
+
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Tag the version if it is new
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $version = [string](Import-PowerShellDataFile -LiteralPath ./Gate/version.psd1).ModuleVersion
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "[FAIL] Gate/version.psd1: '$version' is not MAJOR.MINOR.PATCH" }
+          $tag = "v$version"
+          if (git tag --list $tag) {
+              Write-Output "[INFO] $tag is already tagged; nothing to release"
+              exit 0
+          }
+          if (-not (Select-String -LiteralPath ./Docs/CHANGELOG.md -Pattern "^## \[$([regex]::Escape($version))\]" -Quiet)) {
+              throw "[FAIL] Docs/CHANGELOG.md has no [$version] release section"
+          }
+          git tag $tag $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { throw "[FAIL] git could not create $tag" }
+          git push origin "refs/tags/$tag"
+          if ($LASTEXITCODE -ne 0) { throw "[FAIL] git could not push $tag" }
+          Write-Output "[INFO] tagged $env:GITHUB_SHA as $tag"

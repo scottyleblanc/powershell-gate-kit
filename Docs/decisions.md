@@ -62,9 +62,11 @@ says which rule set it belongs to.
 
 ## DEC-006 — The kit is gated by itself
 
-The kit's root holds its own `gate.config.psd1`, and its pre-push hook runs its own
+The kit holds its own `Gate/gate.config.psd1`, and its pre-push hook runs its own
 `Scripts/Invoke-Gate.ps1`. Its static tests run the gate against throwaway
-repositories, one case per rule.
+repositories, one case per rule. The kit's own gate files sit in `Gate/`, as a
+target's do (DEC-018), so the root holds no second copy of a template; in a target
+they sit under `tools/gate/Gate/`, which the target's gate does not read.
 
 **Why:** a gate script that is not itself held to the gate drifts first.
 
@@ -398,8 +400,8 @@ the record under Gate/Evidence/ when the config is in Gate/".
 
 ## DEC-024 — The kit commits its own agent settings
 
-The kit commits `.claude/settings.json` and its record, `agent-permissions.psd1`, at
-its root, and its config names the record under `Permissions`, so GK08 checks them
+The kit commits `.claude/settings.json` and its record, `Gate/agent-permissions.psd1`,
+and its config names the record under `Permissions`, so GK08 checks them
 on every push and pull request. Both are the templates with the kit's own gate path
 (`./Scripts/Invoke-Gate.ps1`). The rest of `.claude/` stays ignored.
 
@@ -413,3 +415,37 @@ Claude Code loads them only in a session started in that folder.
 `.claude/settings.local.json` or anything else under `.claude/`.
 
 **Enforced by:** GK08 on the kit's own pushes and pull requests.
+
+## DEC-025 — Every feat, fix or sec pull request is a release, numbered from its commits
+
+With `Version.FromCommits` on, GK09 requires the version the commits since the latest
+tag call for, by their Conventional Commits types (VR-003): a breaking change is
+major, `feat` minor, `fix` and `sec` patch, and any other type no release. Before 1.0
+a breaking change is minor. `Update-ReleaseVersion.ps1` sets the version and gives the
+`[Unreleased]` CHANGELOG entries their release heading, on the branch, before the
+pull request merges. The kit turns it on: its version is in `Gate/version.psd1`,
+which GK09 reads as `Version.Manifest`, and `.github/workflows/release.yml` tags
+`main` with it after each merge, doing nothing when the version is already tagged.
+
+**Why:** a number chosen by hand drifts from what changed, and a release made later
+in a batch leaves targets pulling commits no tag names. Reading the bump from the
+commit types makes the number follow `Docs/VERSIONING.md` and lets GK09 check it
+before the merge, in the hook and in CI. The bump is set on the branch because the
+ruleset lets nothing push to `main` but a pull request, and a pull request a workflow
+opens with the default token runs no checks, so it could never merge. A tag is not a
+branch, so the workflow can add it after the merge. Before 1.0, a breaking change
+moving the minor number is common SemVer practice and keeps 1.0 for a deliberate
+release.
+
+**Rules out:** a bot that commits the bump to `main`; a release pull request opened
+by a workflow; a version read only from tags, which the CHANGELOG heading and a
+target's `tools/gate/Gate/version.psd1` could not show; reading "a stricter rule"
+from the commit type, which only the `BREAKING CHANGE:` footer can state; PackageInputs
+for the kit, whose VR-002 bump would disagree with VR-003 for a `chore` change.
+
+**Breaks:** two pull requests open at once both take the next number. The second to
+merge conflicts in `Docs/CHANGELOG.md`, and after its rebase onto the tagged `main`,
+GK09 asks for the number after.
+
+**Enforced by:** the gate tests under "GK09 version" for VR-003, and the
+`Update-ReleaseVersion.ps1` test.
