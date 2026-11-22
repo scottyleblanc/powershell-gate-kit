@@ -6,6 +6,8 @@ All notable changes to this kit are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-22
+
 ### Added
 
 - GK09 key `Version.Unreleased` (off by default): an `## [Unreleased]` CHANGELOG
