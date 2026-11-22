@@ -39,7 +39,7 @@ How to add the gate to a repository that already has code, and how to keep it wo
 **When:** before the first commit of any gate file.
 **Prerequisites:** None
 
-1. Put the target's own gate files in `Gate/`: the config (`Gate/gate.config.psd1`, DEC-018), the analyzer baseline, the gitleaks config and ignore file, the agent permission record and the pre-push hook (`Gate/hooks/pre-push`).
+1. Put the target's own gate files in `Gate/`: the config (`Gate/gate.config.psd1`, DEC-018), the analyzer baseline, the gitleaks config and ignore file, the agent permission record, the pre-push hook (`Gate/hooks/pre-push`), and the review and evidence records, which default to `Gate/Review/LastReview.json` and `Gate/Evidence/LastRun.json` when the config is in `Gate/` (DEC-023).
 2. Give the static tests (GK04) a folder of their own, for example `Tests/Static/`.  `StaticTests` names one folder, and moving test files later means updating every document and script that names them.
 3. Leave `bitbucket-pipelines.yml` or `.github/workflows/gate.yml` where the host reads it; neither can move.
 
@@ -307,7 +307,7 @@ How to add the gate to a repository that already has code, and how to keep it wo
    pwsh -NoProfile -File ./tools/gate/Scripts/Invoke-ModelReview.ps1
    ```
 
-   A new Claude Code session, with no access to the author's session, memory or instruction files, reviews the commits the branch adds to the target branch, in the order [REVIEW.md](REVIEW.md) sets.  It can read the repository at the reviewed commit and nothing else; it cannot run commands or change files.  The script writes the review record named in `gate.config.psd1` (default `Review/LastReview.json`).
+   A new Claude Code session, with no access to the author's session, memory or instruction files, reviews the commits the branch adds to the target branch, in the order [REVIEW.md](REVIEW.md) sets.  It can read the repository at the reviewed commit and nothing else; it cannot run commands or change files.  The script writes the review record named in `gate.config.psd1` (default `Gate/Review/LastReview.json` with the config in `Gate/`, `Review/LastReview.json` with it at the root; DEC-023).
 3. Fix the findings worth fixing, in new commits, and answer every finding in the record ([REVIEW.md](REVIEW.md), "Answering a finding").  The fixes are not reviewed again; the human review judges the Responses.  Run the gate again after the fixes.
 4. Commit the record and open the pull request.  CI runs the gate with `-Base`.  The maintainer does the human review with the template's checklist.
 
@@ -325,7 +325,7 @@ How to add the gate to a repository that already has code, and how to keep it wo
    pwsh -NoProfile -File ./tools/gate/Scripts/Invoke-EvidenceRun.ps1
    ```
 
-   It runs `Evidence.Script` and writes `Evidence/LastRun.json` (the `Evidence.Record` key).
+   It runs `Evidence.Script` and writes the `Evidence.Record` file (default `Gate/Evidence/LastRun.json` with the config in `Gate/`, `Evidence/LastRun.json` with it at the root; DEC-023).
 2. Commit that file as the branch's last commit.
 
 **Verify:** GK12 passes in CI.

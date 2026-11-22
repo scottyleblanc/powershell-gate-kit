@@ -58,10 +58,12 @@
     # committed. Start from tools/gate/Templates/agent-permissions.psd1.
     Permissions = ''
 
-    # GK10. Record is the file Invoke-ModelReview.ps1 writes. Exempt lists files whose
-    # change alone needs no review. The evidence record (GK12) is exempt already.
+    # GK10. Record is the file Invoke-ModelReview.ps1 writes; left out, it is
+    # Gate/Review/LastReview.json with this file in Gate/, or Review/LastReview.json
+    # with it at the root (DEC-023). Exempt lists files whose change alone needs no
+    # review. The evidence record (GK12) is exempt already.
     Review = @{
-        Record = 'Review/LastReview.json'
+        Record = 'Gate/Review/LastReview.json'
         Exempt = @()
     }
 
@@ -87,10 +89,12 @@
     # a local database) and exits 0 only when they pass. Invoke-EvidenceRun.ps1 runs it
     # and writes Record. When a branch changes a Paths entry (a file, or a folder ending
     # in /), the record must show a passing run on a clean tree, with nothing but the
-    # evidence and review records changed after it.
+    # evidence and review records changed after it. Record left out is
+    # Gate/Evidence/LastRun.json with this file in Gate/, or Evidence/LastRun.json at
+    # the root (DEC-023).
     Evidence = @{
         Script = ''        # for example 'scripts/Invoke-IntegrationTest.ps1'
-        Record = 'Evidence/LastRun.json'
+        Record = 'Gate/Evidence/LastRun.json'
         Paths  = @()       # for example @('source/')
     }
 

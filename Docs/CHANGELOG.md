@@ -94,6 +94,13 @@ All notable changes to this kit are recorded here. The format follows
 
 ### Changed
 
+- With `gate.config.psd1` in `Gate/`, the review and evidence records default to
+  `Gate/Review/LastReview.json` and `Gate/Evidence/LastRun.json` (DEC-023). A config
+  at the root keeps `Review/LastReview.json` and `Evidence/LastRun.json`, and a
+  `Record` the config sets still wins. `Templates/gate.config.psd1`, which ADOPT-1
+  copies into `Gate/`, names the new paths. A target with its config in `Gate/` that
+  leaves either `Record` unset moves its record to the new path, or sets the key to
+  the old one, before its next pull request.
 - `Docs/PREREQUISITES.md` lists Linux x64 as supported: `Install-GateTool.ps1` and
   the Bitbucket template, with `-Unit`, have run on hosted Bitbucket runners.
 - AN-014 reads an early exit from the structure of the code (DEC-015). A declining

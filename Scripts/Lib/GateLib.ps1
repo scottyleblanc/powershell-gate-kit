@@ -131,7 +131,9 @@ function Import-GateConfig {
         problem found: no copy or a copy in both places, an unreadable file, an unknown
         key, a value of the wrong shape, and a path that is absolute, leaves the
         repository or does not exist. Paths in the file are relative to the repository
-        root wherever the file sits.
+        root wherever the file sits. A copy in Gate/ moves the default review and
+        evidence records to Gate/Review/LastReview.json and Gate/Evidence/LastRun.json;
+        a Record the file sets still wins.
     .PARAMETER RepoRoot
         The repository root.
     .EXAMPLE
@@ -173,6 +175,12 @@ function Import-GateConfig {
         return [PSCustomObject]@{ Config = $config; Problems = @($problems) }
     }
     $file = $found[0]
+
+    # see Docs/decisions.md DEC-023
+    if ($file -eq $inGate) {
+        $config.Review.Record   = 'Gate/Review/LastReview.json'
+        $config.Evidence.Record = 'Gate/Evidence/LastRun.json'
+    }
 
     # Import-PowerShellDataFile accepts only data: no command or expression runs.
     $read = $null
