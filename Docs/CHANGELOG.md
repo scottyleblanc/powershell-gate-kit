@@ -6,6 +6,11 @@ All notable changes to this kit are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- `README.md` and `Docs/SECURITY.md` name the kit's version, 0.2.0, in their
+  `Version` row. `Docs/VERSIONING.md` adds both rows to the release step.
+
 ## [0.2.0] - 2026-11-22
 
 ### Added

@@ -2,7 +2,7 @@
 
 | Item | Value |
 |---|---|
-| Version | 0.1.0 (tagged on merge) |
+| Version | 0.2.0 (tagged on merge) |
 | Last audit | not yet audited |
 | Findings resolved | none recorded |
 | Tests | 217 static tests |

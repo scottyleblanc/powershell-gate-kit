@@ -62,7 +62,8 @@ Every pull request with a `feat`, `fix`, `sec` or breaking commit is a release:
 2. After the branch's last commit, run
    `pwsh -NoProfile -File ./Scripts/Update-ReleaseVersion.ps1`. It sets
    `Gate/version.psd1` and gives the `[Unreleased]` entries their
-   `## [x.y.z] - date` heading. Commit both files.
+   `## [x.y.z] - date` heading. Set the `Version` row in `README.md` and
+   `Docs/SECURITY.md` to the same number. Commit all four files.
 3. Open the pull request. GK09 fails, in the hook and in CI, while the version is not
    the one the commits call for.
 4. After the merge, `.github/workflows/release.yml` tags `main` with the version.

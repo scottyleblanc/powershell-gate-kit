@@ -93,7 +93,7 @@ The pre-push hook does not pass it (DEC-021).
 
 | Item | Value |
 |---|---|
-| Version | 0.1.0 (tagged on merge) |
+| Version | 0.2.0 (tagged on merge) |
 | Last audit | not yet audited |
 | Tests | 217 static tests: 55 gate behaviour cases, 98 analyzer rule cases, 64 unbranded file checks |
 | Open items | See [Docs/SECURITY.md](Docs/SECURITY.md#open-items) |
