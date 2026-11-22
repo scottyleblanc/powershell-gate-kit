@@ -9,4 +9,6 @@
 # runs every check on each pull request (DEC-011, DEC-020).
 
 root="$(git rev-parse --show-toplevel)" || exit 1
-exec pwsh -NoProfile -File "$root/Scripts/Invoke-Gate.ps1" -Quick
+# exec pwsh -NoProfile -File "$root/tools/gate/Scripts/Invoke-Gate.ps1" -Quick
+git fetch --quiet origin master || exit 1
+exec pwsh -NoProfile -File "$root/tools/gate/Scripts/Invoke-Gate.ps1" -Quick -Base origin/master

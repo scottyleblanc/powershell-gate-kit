@@ -29,7 +29,8 @@ definitions:
           - curl -sSfL -o /tmp/pwsh.tar.gz "https://github.com/PowerShell/PowerShell/releases/download/v${PWSH_VERSION}/powershell-${PWSH_VERSION}-linux-x64.tar.gz"
           - echo "${PWSH_SHA256}  /tmp/pwsh.tar.gz" | sha256sum -c -
           - mkdir -p /opt/pwsh && tar -xzf /tmp/pwsh.tar.gz -C /opt/pwsh && chmod +x /opt/pwsh/pwsh && rm /tmp/pwsh.tar.gz
-          # The clone may hold only the source branch: fetch the target for -Base.
+          # The clone may hold only the source branch: fetch the branch the pull request
+          # merges into and pass it as -Base.
           - git fetch --quiet origin "+refs/heads/${BITBUCKET_PR_DESTINATION_BRANCH}:refs/remotes/origin/${BITBUCKET_PR_DESTINATION_BRANCH}"
           # Unit tests: install what the suite needs here, and set the variables Windows
           # always sets that the code reads (ADOPT-14), for example:

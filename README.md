@@ -17,6 +17,11 @@ The pre-push hook runs the same command with `-Quick`, which skips the slow chec
 config lists, such as the analyzer; the secret checks always run there. CI runs every
 check on each pull request, so nothing is skipped before a merge.
 
+`-Base` is the branch the pull request merges into, as a git revision such as
+`origin/main`. CI passes it. The pre-push hook does not. With it, GK06 and GK07 scan
+the commits the branch adds, GK09 runs its tag rule, and GK10, GK12 and GK13 run.
+Without it those three stay off, and GK06 and GK07 scan commits not yet on a remote.
+
 A repository takes the kit as a git subtree in its `tools/gate/` folder and configures
 it with one data file, `gate.config.psd1`, in its root folder or in `Gate/`.
 

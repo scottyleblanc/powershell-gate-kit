@@ -7,6 +7,11 @@ retired.
 IDs: checks are `GKnn`, in the order the gate runs them; rules are a two-letter area
 and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 
+`-Base` is the branch a pull request merges into, as a git revision such as
+`origin/main`. CI passes it. The pre-push hook does not. With it, GK06 and GK07 scan
+the commits the branch adds, GK09 runs VR-002, and GK10, GK12 and GK13 run. Without it
+those three stay off, and GK06 and GK07 scan commits not yet on a remote.
+
 ## Checks
 
 | Check | Name | Runs | Rules |
