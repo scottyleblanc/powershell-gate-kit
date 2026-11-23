@@ -42,8 +42,8 @@
     committed.
 
 .PARAMETER Base
-    The branch the pull request merges into, as a git revision. Default: the remote's
-    default branch (origin/HEAD).
+    The branch the pull request merges into, as a git revision. The same value as
+    Invoke-Gate.ps1 -Base. Default: the remote's default branch (origin/HEAD).
 
 .PARAMETER Model
     The model the reviewer uses. Default: claude-opus-5-5.

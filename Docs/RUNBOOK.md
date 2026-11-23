@@ -138,7 +138,7 @@ How to add the gate to a repository that already has code, and how to keep it wo
    git config core.hooksPath Gate/hooks
    ```
 
-   The hook runs the gate with `-Quick` before every push and refuses the push when a check fails.  `-Quick` skips the checks the `Quick` key in `gate.config.psd1` lists: GK03, the analyzer, by default.  A slow check can join it, such as GK04 when the static tests take minutes; the config, tool, secret and permission checks always run.  CI runs every check on every pull request (DEC-011, DEC-020).  Do not run the full gate locally after every change; the hook and CI already run it.
+   The hook runs the gate with `-Quick` before every push and refuses the push when a check fails.  `-Quick` skips the checks the `Quick` key in `gate.config.psd1` lists: GK03, the analyzer, by default.  A slow check can join it, such as GK04 when the static tests take minutes; the config, tool, secret and permission checks always run.  The hook does not pass `-Base`.  `-Base` is the branch the pull request merges into, such as `origin/main`.  CI passes it, and that is what runs GK10, GK12, GK13 and the GK09 tag rule; GK06 and GK07 then scan the commits the branch adds instead of commits not yet on a remote.  CI runs every check on every pull request (DEC-011, DEC-020).  Do not run the full gate locally after every change; the hook and CI already run it.
 3. Do not set `core.hooksPath` in a clone that must never push, such as a deployed copy guarded by its own hook: the repository setting overrides any global guard.
 
 **Verify:** `git config core.hooksPath` prints `Gate/hooks`, `Gate/hooks/pre-push` exists and is executable (`git ls-files -s Gate/hooks/pre-push` shows mode `100755`), and the next `git push` prints the gate's lines before it sends anything.
@@ -235,7 +235,7 @@ How to add the gate to a repository that already has code, and how to keep it wo
    - **GitHub:** copy `tools/gate/Templates/github/gate.yml` to `.github/workflows/gate.yml`.
    - **Bitbucket:** copy `tools/gate/Templates/bitbucket-pipelines.yml` to `bitbucket-pipelines.yml` and turn on Pipelines for the repository.
 
-   Both run the gate on every pull request against its target branch.
+   Both run the gate on every pull request.  They pass `-Base` as the branch the pull request merges into: `origin/main`, or that pull request's target.
 2. Make the build a required check on the target branch:
    - **GitHub:** a branch protection rule or ruleset requiring the `gate` job.  This needs a public repository or a paid plan; on GitHub Free a private repository runs the gate but cannot block the merge.
    - **Bitbucket:** Repository settings, Branch restrictions, the rule for the target branch, Merge settings: tick "Minimum number of successful builds for the last commit with no failed builds and no in progress builds" and set it to 1.  A merge check blocks the merge only when the plan enforces merge checks ("Prevent a merge with unresolved merge checks"); otherwise a failed build only warns.  Which Bitbucket plan enforces it is not yet verified ([TODO.md](TODO.md)).
@@ -309,7 +309,7 @@ How to add the gate to a repository that already has code, and how to keep it wo
 
    A new Claude Code session, with no access to the author's session, memory or instruction files, reviews the commits the branch adds to the target branch, in the order [REVIEW.md](REVIEW.md) sets.  It can read the repository at the reviewed commit and nothing else; it cannot run commands or change files.  The script writes the review record named in `gate.config.psd1` (default `Gate/Review/LastReview.json` with the config in `Gate/`, `Review/LastReview.json` with it at the root; DEC-023).
 3. Fix the findings worth fixing, in new commits, and answer every finding in the record ([REVIEW.md](REVIEW.md), "Answering a finding").  The fixes are not reviewed again; the human review judges the Responses.  Run the gate again after the fixes.
-4. Commit the record and open the pull request.  CI runs the gate with `-Base`.  The maintainer does the human review with the template's checklist.
+4. Commit the record and open the pull request.  CI runs the gate with `-Base` set to the branch the pull request merges into, such as `origin/main`.  The maintainer does the human review with the template's checklist.
 
 **Verify:** GK10 passes in CI.
 **If this fails:** GK10 fails when the record is missing, does not cover the branch from its merge base, or has an unanswered finding (RV-001).  One review per pull request keeps the cost bounded; a second review is the author's choice.

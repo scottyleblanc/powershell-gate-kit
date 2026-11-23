@@ -61,7 +61,9 @@
 
 .PARAMETER Base
     The branch a pull request merges into, as a git revision (for example
-    origin/main). CI passes it; the pre-push hook does not.
+    origin/main). CI passes it; the pre-push hook does not. Passing it makes GK06 and
+    GK07 scan the commits the branch adds, runs the GK09 tag rule, and runs GK10, GK12
+    and GK13.
 
 .PARAMETER Unit
     Also run GK11, when gate.config.psd1 turns it on.

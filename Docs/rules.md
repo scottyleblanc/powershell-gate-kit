@@ -7,6 +7,11 @@ retired.
 IDs: checks are `GKnn`, in the order the gate runs them; rules are a two-letter area
 and three digits; decisions are `DEC-nnn` (`Docs/decisions.md`).
 
+`-Base` is the branch a pull request merges into, as a git revision such as
+`origin/main`. CI passes it. The pre-push hook does not. With it, GK06 and GK07 scan
+the commits the branch adds, GK09 runs VR-002, and GK10, GK12 and GK13 run. Without it
+those three stay off, and GK06 and GK07 scan commits not yet on a remote.
+
 ## Checks
 
 | Check | Name | Runs | Rules |
@@ -229,3 +234,7 @@ These hold for the kit's own files and are checked by the kit's own tests.
 - **KT-001** — The kit carries no owner branding, copyright line or rule IDs from
   another repository's rule set, except the copyright line in `LICENSE` (DEC-010).
   Example: `Tests/Unbranded.Tests.ps1` fails on a company name in a comment.
+- **KT-002** — The `Version` row in `README.md` and `Docs/SECURITY.md` names the
+  `ModuleVersion` in `Gate/version.psd1`.
+  Example: `Tests/KitVersion.Tests.ps1` fails on `| Version | 0.1.0 (tagged on merge) |`
+  while the version is `0.2.0`.

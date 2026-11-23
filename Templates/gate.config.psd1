@@ -8,6 +8,10 @@
     SchemaVersion = 1
 
     # The optional checks. The core checks (GK01 to GK08) always run.
+    # -Base, passed by CI and not by the pre-push hook, is the branch the pull request
+    # merges into (origin/main, or that pull request's target). GK10, GK12, GK13 and the
+    # GK09 tag rule run only when it is passed. GK06 and GK07 then scan the commits the
+    # branch adds.
     Checks = @{
         Review       = $true    # GK10, with -Base: the second-model review record
         Version      = $false   # GK09: one version everywhere, and the tag rule with -Base

@@ -29,7 +29,7 @@ jobs:
     steps:
       # The pull request head, not GitHub's merge commit: the commit checks then see
       # exactly the pull request's own commits. The full history gives origin/<base>
-      # for -Base.
+      # for -Base, the branch the pull request merges into.
       - name: Check out the pull request head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

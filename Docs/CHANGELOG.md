@@ -6,6 +6,23 @@ All notable changes to this kit are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- KT-002 (`Tests/KitVersion.Tests.ps1`): the `Version` row in `README.md` and
+  `Docs/SECURITY.md` names the `ModuleVersion` in `Gate/version.psd1`.
+
+### Changed
+
+- `-Base` is defined in the overview, the rules, the runbook, the config template and
+  the pre-push template: the branch a pull request merges into. CI passes it; the
+  pre-push hook does not. With it, GK06 and GK07 scan the commits the branch adds,
+  GK09 runs its tag rule, and GK10, GK12 and GK13 run.
+
+### Fixed
+
+- `README.md` and `Docs/SECURITY.md` name the kit's version, 0.2.0, in their
+  `Version` row. `Docs/VERSIONING.md` adds both rows to the release step.
+
 ## [0.2.0] - 2026-11-22
 
 ### Added
